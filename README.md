@@ -1,5 +1,7 @@
 # MIRACUM Mapper
 
+**Note:** A new version is currently under development and can be found here: https://github.com/miracum/MIRACUM-Mapper-2.0-backend
+
 MIRACUM Mapper is a multi-user application for collaboratively creating mappings to medical terminologies, such as LOINC.
 
 The manual mapping of local codes to standard terminologies specific to an organization or institute can be a tedious task. Aligning such codes requires not only fundamental terminological knowledge but also a good understanding of the local context, necessitating constant information exchange with colleagues. Manually maintaining code lists in spreadsheets (e.g., Excel) and communication via email or phone is not particularly efficient. This leads to both a potential "data chaos" and the challenge of colleagues not always being available.
