@@ -188,10 +188,10 @@ namespace UKER_Mapper
             }
 
             configFile = configFile.Replace("\r", "");
-            jdbcConnectionString = configFile.Split('\n')[0];
-            activeDirectoryServer = configFile.Split('\n')[1];
+            jdbcConnectionString = configFile.Split('\n')[0].Trim().Replace("\r", "").Replace("\n", "");
+            activeDirectoryServer = configFile.Split('\n')[1].Trim().Replace("\r", "").Replace("\n", "");
 
-            checkSoftwareVersion();
+
             InitializeComponent();
 
             log("Starting application " + this.Text);
@@ -239,6 +239,8 @@ namespace UKER_Mapper
             this.WindowState = FormWindowState.Normal;
             this.Activate();
 
+            checkSoftwareVersion();
+
         }
 
         private void checkSoftwareVersion() // Check if we're compatible with the database
@@ -257,6 +259,7 @@ namespace UKER_Mapper
                     {
                         reqVersion = Int32.Parse(reader["requiresversion"].ToString());
                     }
+                conn.Close();
             }
             catch (Exception msg)
             {
@@ -283,8 +286,10 @@ namespace UKER_Mapper
                         if (reader["column_name"].ToString().Equals("local_password_md5"))
                         {
                             schemaVersion = 2;
-                        };
+                        }
+                        ;
                     }
+                conn.Close();
             }
             catch (Exception msg)
             {
@@ -307,6 +312,7 @@ namespace UKER_Mapper
                         {
                             schemaVersion = Int32.Parse(reader["schemaversion"].ToString());
                         }
+                    conn.Close();
                 }
                 catch (Exception msg)
                 {
@@ -315,6 +321,55 @@ namespace UKER_Mapper
                     terminate();
                 }
             }
+
+
+            if (schemaVersion >= 3)
+            {
+
+                String nextJdbcConnectionString = "";
+                String nextActiveDirectoryServer = "";
+
+                try
+                {
+                    NpgsqlConnection conn = new NpgsqlConnection(jdbcConnectionString);
+                    conn.Open();
+
+                    using (var cmd = new NpgsqlCommand("select db, ldap from next_connection", conn))
+                    using (var reader = cmd.ExecuteReader())
+                        while (reader.Read())
+                        {
+                            nextJdbcConnectionString = reader["db"].ToString().Trim().Replace("\r", "").Replace("\n", "");
+                            nextActiveDirectoryServer = reader["ldap"].ToString().Trim().Replace("\r", "").Replace("\n", "");
+                        }
+                    conn.Close();
+
+                    if (!String.Equals(nextActiveDirectoryServer, activeDirectoryServer) || !String.Equals(nextJdbcConnectionString, jdbcConnectionString))
+                    {
+                        File.WriteAllBytes(@"config.dat", Encoding.ASCII.GetBytes(EncDec.Encrypt(nextJdbcConnectionString + "\n" + nextActiveDirectoryServer, "TrustNo1")));
+                    }
+                    if (!String.Equals(nextActiveDirectoryServer, activeDirectoryServer))
+                    {
+                        MessageBox.Show("LDAP server configuration has been updated. Please restart program.", "MIRACUM Mapper");
+                        activeDirectoryServer = nextActiveDirectoryServer;
+                        terminate();
+                    }
+                    if (!String.Equals(nextJdbcConnectionString, jdbcConnectionString))
+                    {
+                        jdbcConnectionString = nextJdbcConnectionString;
+                        MessageBox.Show("Database server configuration has been updated. Please restart program.", "MIRACUM Mapper");
+                        jdbcConnectionString = nextJdbcConnectionString;
+                        terminate();
+                    }
+                }
+                catch (Exception msg)
+                {
+                    MessageBox.Show(msg.ToString(), "MIRACUM Mapper: ERROR");
+                    throw;
+                    terminate();
+                }
+            }
+
+
 
         }
 
@@ -1455,16 +1510,16 @@ namespace UKER_Mapper
             if (local_password.Equals(""))
             {
                 // LDAP-Authentifizerung
-                using (PrincipalContext pc = new PrincipalContext(ContextType.Domain, activeDirectoryServer))
-                    try
-                    {
-                        isValid = pc.ValidateCredentials(userLoggedIn, pass);
-                    }
-                    catch (Exception msg)
-                    {
-                        MessageBox.Show(msg.ToString(), "MIRACUM Mapper: ERROR");
-                        throw;
-                    }
+                try
+                {
+                    PrincipalContext pc = new PrincipalContext(ContextType.Domain, activeDirectoryServer);
+                    isValid = pc.ValidateCredentials(userLoggedIn, pass);
+                }
+                catch (Exception msg)
+                {
+                    MessageBox.Show(msg.ToString(), "MIRACUM Mapper: ERROR");
+                    throw;
+                }
 
                 if (isValid)
                 {
@@ -1478,7 +1533,7 @@ namespace UKER_Mapper
                 }
             }
             else
-            {
+            { // Lokale Passwort-Authentifizerung
                 if (local_password.ToUpper().Equals(CreateMD5(pass).ToUpper()))
                 {
                     isValid = true;
