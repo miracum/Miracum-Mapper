@@ -35,12 +35,13 @@ The tool is a small Windows application that runs locally on a Windows PC. It co
 
 - Open the source code in Visual Studio (VS) Community 2022 or a later version.
 - If you encounter problems with the VS Form Designer in connection with the custom class TransparentPanel, see: https://stackoverflow.com/a/29247115.
-- You may also need to manually add some dependencies to the "source/packages" directory: Npgsql.2.0.11, System.DirectoryServices.4.0.0, and System.DirectoryServices.AccountManagement.4.5.0. (Note: It is true that Npgsql should be updated, but this is a bigger challenge as this library was recently rewritten and is no longer fully compatible, at least out-of-the-box, with MIRACUM Mapper.)
 
 ## Configuration & Startup
 ### Config.dat File
 
 When you run the program for the first time, it should not start as it still requires a correctly configured configuration file (Config.dat). This file stores the connection to the PostgreSQL database and the LDAP server. Note that the file is encrypted when it is processed by the program the first time, even if it has not yet been configured. It is a good idea to configure this file correctly in a binary distribution folder (which can be downloaded from the GitHub artifacts on the right) and instruct VS during development to also execute the temporary builds in this folder.
+
+Since version 1.9.0: The configuration is now also saved in the database and retrieved by the program at startup. This makes it possible to automatically update the clients to a new configuration without manually distributing a Config.dat file. It is therefore necessary to also place the configuration in the database ("next_connection" table).
 
 ### Database Schema
 

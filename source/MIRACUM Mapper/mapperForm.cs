@@ -188,10 +188,10 @@ namespace UKER_Mapper
             }
 
             configFile = configFile.Replace("\r", "");
-            jdbcConnectionString = configFile.Split('\n')[0];
-            activeDirectoryServer = configFile.Split('\n')[1];
+            jdbcConnectionString = configFile.Split('\n')[0].Trim().Replace("\r", "").Replace("\n", "");
+            activeDirectoryServer = configFile.Split('\n')[1].Trim().Replace("\r", "").Replace("\n", "");
 
-            checkSoftwareVersion();
+
             InitializeComponent();
 
             log("Starting application " + this.Text);
@@ -239,6 +239,8 @@ namespace UKER_Mapper
             this.WindowState = FormWindowState.Normal;
             this.Activate();
 
+            checkSoftwareVersion();
+
         }
 
         private void checkSoftwareVersion() // Check if we're compatible with the database
@@ -257,6 +259,7 @@ namespace UKER_Mapper
                     {
                         reqVersion = Int32.Parse(reader["requiresversion"].ToString());
                     }
+                conn.Close();
             }
             catch (Exception msg)
             {
@@ -280,10 +283,13 @@ namespace UKER_Mapper
                 using (var reader = cmd.ExecuteReader())
                     while (reader.Read())
                     {
-                        if(reader["column_name"].ToString().Equals("local_password_md5")) {
+                        if (reader["column_name"].ToString().Equals("local_password_md5"))
+                        {
                             schemaVersion = 2;
-                        };
+                        }
+                        ;
                     }
+                conn.Close();
             }
             catch (Exception msg)
             {
@@ -291,7 +297,7 @@ namespace UKER_Mapper
                 throw;
                 terminate();
             }
-           
+
             if (schemaVersion >= 2)
             {
                 // Test, if DB schema version is greater than 1 (this is the case if column "local_password_md5" exits in table "userids"):
@@ -306,6 +312,7 @@ namespace UKER_Mapper
                         {
                             schemaVersion = Int32.Parse(reader["schemaversion"].ToString());
                         }
+                    conn.Close();
                 }
                 catch (Exception msg)
                 {
@@ -314,6 +321,55 @@ namespace UKER_Mapper
                     terminate();
                 }
             }
+
+
+            if (schemaVersion >= 3)
+            {
+
+                String nextJdbcConnectionString = "";
+                String nextActiveDirectoryServer = "";
+
+                try
+                {
+                    NpgsqlConnection conn = new NpgsqlConnection(jdbcConnectionString);
+                    conn.Open();
+
+                    using (var cmd = new NpgsqlCommand("select db, ldap from next_connection", conn))
+                    using (var reader = cmd.ExecuteReader())
+                        while (reader.Read())
+                        {
+                            nextJdbcConnectionString = reader["db"].ToString().Trim().Replace("\r", "").Replace("\n", "");
+                            nextActiveDirectoryServer = reader["ldap"].ToString().Trim().Replace("\r", "").Replace("\n", "");
+                        }
+                    conn.Close();
+
+                    if (!String.Equals(nextActiveDirectoryServer, activeDirectoryServer) || !String.Equals(nextJdbcConnectionString, jdbcConnectionString))
+                    {
+                        File.WriteAllBytes(@"config.dat", Encoding.ASCII.GetBytes(EncDec.Encrypt(nextJdbcConnectionString + "\n" + nextActiveDirectoryServer, "TrustNo1")));
+                    }
+                    if (!String.Equals(nextActiveDirectoryServer, activeDirectoryServer))
+                    {
+                        MessageBox.Show("LDAP server configuration has been updated. Please restart program.", "MIRACUM Mapper");
+                        activeDirectoryServer = nextActiveDirectoryServer;
+                        terminate();
+                    }
+                    if (!String.Equals(nextJdbcConnectionString, jdbcConnectionString))
+                    {
+                        jdbcConnectionString = nextJdbcConnectionString;
+                        MessageBox.Show("Database server configuration has been updated. Please restart program.", "MIRACUM Mapper");
+                        jdbcConnectionString = nextJdbcConnectionString;
+                        terminate();
+                    }
+                }
+                catch (Exception msg)
+                {
+                    MessageBox.Show(msg.ToString(), "MIRACUM Mapper: ERROR");
+                    throw;
+                    terminate();
+                }
+            }
+
+
 
         }
 
@@ -985,15 +1041,16 @@ namespace UKER_Mapper
                 startWorking();
                 try
                 {
-                    NpgsqlConnection conn = new NpgsqlConnection(jdbcConnectionString);
-                    conn.Open();
-                    NpgsqlCommand cmd = new NpgsqlCommand("SELECT source_code, source_desc FROM sourceterms WHERE source_code = '" + selectedSourceTerm + "'", conn);
+                    NpgsqlConnection conn1 = new NpgsqlConnection(jdbcConnectionString);
+                    conn1.Open();
+                    NpgsqlCommand cmd1 = new NpgsqlCommand("SELECT source_code, source_desc FROM sourceterms WHERE source_code = '" + selectedSourceTerm + "'", conn1);
 
-                    NpgsqlDataReader reader = cmd.ExecuteReader();
-                    while (reader.Read())
+                    NpgsqlDataReader reader1 = cmd1.ExecuteReader();
+                    while (reader1.Read())
                     {
-                        SourceDescr.Text = reader["source_desc"].ToString();
+                        SourceDescr.Text = reader1["source_desc"].ToString();
                     }
+                    reader1.Close();
 
                     // Add all mappings
 
@@ -1007,16 +1064,16 @@ namespace UKER_Mapper
 
                     printDebug(sql);
 
-                    cmd = new NpgsqlCommand(sql, conn);
-                    reader = cmd.ExecuteReader();
+                    cmd1 = new NpgsqlCommand(sql, conn1);
+                    reader1 = cmd1.ExecuteReader();
 
-                    if (reader.HasRows)
+                    if (reader1.HasRows)
                     {
-                        while (reader.Read())
+                        while (reader1.Read())
                         {
-                            string source_code = reader["source_code"].ToString();
-                            string target_code = reader["target_code"].ToString();
-                            string maxversion = reader["maxversion"].ToString();
+                            string source_code = reader1["source_code"].ToString();
+                            string target_code = reader1["target_code"].ToString();
+                            string maxversion = reader1["maxversion"].ToString();
 
                             // Test if it's deleted. If not, add it to the list.
 
@@ -1029,7 +1086,9 @@ namespace UKER_Mapper
                                 sql = "select source_code, target_code, version, deleted from mapping where source_code = '" + source_code + "' and target_code ='" + target_code + "' and version = '" + maxversion + "' and deleted = 0";
                             }
 
-                            NpgsqlCommand cmd2 = new NpgsqlCommand(sql, conn);
+                            NpgsqlConnection conn2 = new NpgsqlConnection(jdbcConnectionString);
+                            conn2.Open();
+                            NpgsqlCommand cmd2 = new NpgsqlCommand(sql, conn2);
                             NpgsqlDataReader reader2 = cmd2.ExecuteReader();
                             if (reader2.HasRows)
                             {
@@ -1049,16 +1108,19 @@ namespace UKER_Mapper
                                 }
                             }
                             reader2.Close();
+                            conn2.Close();
                         }
                     }
-                    reader.Close();
-                    conn.Close();
+                    reader1.Close();
+                    conn1.Close();
+
                 }
                 catch (Exception msg)
                 {
                     MessageBox.Show(msg.ToString(), "MIRACUM Mapper: ERROR");
                     throw;
                 }
+
 
                 if (mappingTermsList.Items.Count > 0)
                 {
@@ -1448,16 +1510,16 @@ namespace UKER_Mapper
             if (local_password.Equals(""))
             {
                 // LDAP-Authentifizerung
-                using (PrincipalContext pc = new PrincipalContext(ContextType.Domain, activeDirectoryServer))
-                    try
-                    {
-                        isValid = pc.ValidateCredentials(userLoggedIn, pass);
-                    }
-                    catch (Exception msg)
-                    {
-                        MessageBox.Show(msg.ToString(), "MIRACUM Mapper: ERROR");
-                        throw;
-                    }
+                try
+                {
+                    PrincipalContext pc = new PrincipalContext(ContextType.Domain, activeDirectoryServer);
+                    isValid = pc.ValidateCredentials(userLoggedIn, pass);
+                }
+                catch (Exception msg)
+                {
+                    MessageBox.Show(msg.ToString(), "MIRACUM Mapper: ERROR");
+                    throw;
+                }
 
                 if (isValid)
                 {
@@ -1471,7 +1533,7 @@ namespace UKER_Mapper
                 }
             }
             else
-            {
+            { // Lokale Passwort-Authentifizerung
                 if (local_password.ToUpper().Equals(CreateMD5(pass).ToUpper()))
                 {
                     isValid = true;
