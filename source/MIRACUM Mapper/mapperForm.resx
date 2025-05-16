@@ -415,10 +415,10 @@
     <value>False</value>
   </data>
   <data name="targetCode.Location" type="System.Drawing.Point, System.Drawing">
-    <value>526, 42</value>
+    <value>449, 42</value>
   </data>
   <data name="targetCode.Size" type="System.Drawing.Size, System.Drawing">
-    <value>118, 20</value>
+    <value>195, 20</value>
   </data>
   <data name="targetCode.TabIndex" type="System.Int32, mscorlib">
     <value>10</value>
@@ -478,13 +478,13 @@
     <value>408, 45</value>
   </data>
   <data name="label6.Size" type="System.Drawing.Size, System.Drawing">
-    <value>55, 13</value>
+    <value>35, 13</value>
   </data>
   <data name="label6.TabIndex" type="System.Int32, mscorlib">
     <value>12</value>
   </data>
   <data name="label6.Text" xml:space="preserve">
-    <value>Ziel-Code:</value>
+    <value>Code:</value>
   </data>
   <data name="&gt;&gt;label6.Name" xml:space="preserve">
     <value>label6</value>
@@ -505,7 +505,7 @@
     <value>NoControl</value>
   </data>
   <data name="label7.Location" type="System.Drawing.Point, System.Drawing">
-    <value>408, 122</value>
+    <value>408, 168</value>
   </data>
   <data name="label7.Size" type="System.Drawing.Size, System.Drawing">
     <value>112, 13</value>
@@ -532,7 +532,7 @@
     <value>False</value>
   </data>
   <data name="secondarySourceCode.Location" type="System.Drawing.Point, System.Drawing">
-    <value>526, 119</value>
+    <value>525, 165</value>
   </data>
   <data name="secondarySourceCode.Size" type="System.Drawing.Size, System.Drawing">
     <value>175, 20</value>
@@ -556,7 +556,7 @@
     <value>False</value>
   </data>
   <data name="secondarySourceCodeCondition.Location" type="System.Drawing.Point, System.Drawing">
-    <value>526, 145</value>
+    <value>525, 191</value>
   </data>
   <data name="secondarySourceCodeCondition.Size" type="System.Drawing.Size, System.Drawing">
     <value>175, 20</value>
@@ -583,7 +583,7 @@
     <value>NoControl</value>
   </data>
   <data name="label8.Location" type="System.Drawing.Point, System.Drawing">
-    <value>408, 148</value>
+    <value>408, 194</value>
   </data>
   <data name="label8.Size" type="System.Drawing.Size, System.Drawing">
     <value>61, 13</value>
@@ -610,13 +610,13 @@
     <value>False</value>
   </data>
   <data name="documentationText.Location" type="System.Drawing.Point, System.Drawing">
-    <value>411, 203</value>
+    <value>411, 249</value>
   </data>
   <data name="documentationText.MaxLength" type="System.Int32, mscorlib">
     <value>2000</value>
   </data>
   <data name="documentationText.Size" type="System.Drawing.Size, System.Drawing">
-    <value>290, 234</value>
+    <value>290, 188</value>
   </data>
   <data name="documentationText.TabIndex" type="System.Int32, mscorlib">
     <value>17</value>
@@ -643,7 +643,7 @@
     <value>NoControl</value>
   </data>
   <data name="label9.Location" type="System.Drawing.Point, System.Drawing">
-    <value>408, 179</value>
+    <value>408, 222</value>
   </data>
   <data name="label9.Size" type="System.Drawing.Size, System.Drawing">
     <value>82, 13</value>
@@ -742,7 +742,7 @@
     <value>NoControl</value>
   </data>
   <data name="addCommentBtn.Location" type="System.Drawing.Point, System.Drawing">
-    <value>526, 174</value>
+    <value>525, 217</value>
   </data>
   <data name="addCommentBtn.Size" type="System.Drawing.Size, System.Drawing">
     <value>175, 23</value>
@@ -799,7 +799,7 @@
     <value>411, 68</value>
   </data>
   <data name="TermInfo.Size" type="System.Drawing.Size, System.Drawing">
-    <value>289, 43</value>
+    <value>289, 91</value>
   </data>
   <data name="TermInfo.TabIndex" type="System.Int32, mscorlib">
     <value>29</value>
@@ -1590,7 +1590,7 @@
     <value>NoControl</value>
   </data>
   <data name="$this.Text" xml:space="preserve">
-    <value>MIRACUM Mapper (Version 1.9.0, 2025-05-14)</value>
+    <value>MIRACUM Mapper (Version 1.9.1, 2025-05-15)</value>
   </data>
   <data name="&gt;&gt;$this.Name" xml:space="preserve">
     <value>mapperForm</value>

@@ -115,7 +115,7 @@ namespace UKER_Mapper
                 orWidth.Add(cnt.Width);
                 orHeigth.Add(cnt.Height);
                 orFontSize.Add(cnt.Font.Size);
-            }
+           }
         }
 
         protected override void OnResize(System.EventArgs e)
@@ -142,6 +142,7 @@ namespace UKER_Mapper
             cnt.Width = orWidth[i];
             cnt.Height = orHeigth[i];
             cnt.Font = new Font(cnt.Font.FontFamily.Name, orFontSize[i], cnt.Font.Style);
+            
         }
 
         private void ResizeAll(Control cnt, Size newSize)
@@ -193,6 +194,7 @@ namespace UKER_Mapper
 
 
             InitializeComponent();
+            //mappingTermsList.DrawMode = DrawMode.OwnerDrawFixed;
 
             log("Starting application " + this.Text);
             this.CenterToScreen();
@@ -269,7 +271,7 @@ namespace UKER_Mapper
             }
             if (reqVersion > thisVersion || reqVersion == 0)
             {
-                MessageBox.Show("You have version " + thisVersion + " of MIRACUM Mapper installed, but version " + reqVersion + " is required by the server. Please update this program!", "MIRACUM Mapper: software version outdated!");
+                MessageBox.Show("A newer version of MIRACUM Mapper is required by the server. Please update this program!", "MIRACUM Mapper: Software Version Outdated!");
                 terminate();
             }
 
@@ -686,8 +688,8 @@ namespace UKER_Mapper
             for (int i = 0; i < listBox.Items.Count; i++)
             {
                 string item = listBox.Items[i].ToString();
-                if (backupItemName[index].Replace(" (gelöscht)", "").Equals(item.Replace(" (gelöscht)", "")) ||
-                    backupItemName[index].Replace(" (deleted)", "").Equals(item.Replace(" (deleted)", "")))
+                if (backupItemName[index].Replace("(X) ", "").Equals(item) ||
+                    ("(X) " + backupItemName[index] ).Equals(item))
                 {
                     listBox.SetSelected(i, true);
                     break;
@@ -1101,8 +1103,8 @@ namespace UKER_Mapper
                                     ListboxItem item = new ListboxItem();
                                     item.Text = target_code;
 
-                                    if (deleted == "1" && CultureInfo.CurrentCulture.Name.Equals("de-DE")) item.Text = item.Text + " (gelöscht)";
-                                    if (deleted == "1" && !CultureInfo.CurrentCulture.Name.Equals("de-DE")) item.Text = item.Text + " (deleted)";
+                                    if (deleted == "1" && CultureInfo.CurrentCulture.Name.Equals("de-DE")) item.Text = "(X) " + item.Text;
+                                    if (deleted == "1" && !CultureInfo.CurrentCulture.Name.Equals("de-DE")) item.Text = "(X) " + item.Text;
 
                                     mappingTermsList.Items.Add(item);
                                 }
@@ -1312,8 +1314,12 @@ namespace UKER_Mapper
             printDebug("calling " + System.Reflection.MethodBase.GetCurrentMethod().Name + "() #############");
 
             disableEventHandlers();
-            tCode = tCode.Replace(" (gelöscht)", "");
-            tCode = tCode.Replace(" (deleted)", "");
+
+            if (tCode.StartsWith("(X) "))
+            {
+                tCode = tCode.Replace("(X) ", "");
+            }
+                        
             startWorking();
 
             if (!keepTargetCode)
@@ -1379,9 +1385,12 @@ namespace UKER_Mapper
                     string mapping_level = reader["mapping_level"].ToString();
 
                     if (!keepTargetCode) targetCode.Text = target_code;
+                    targetCode.SelectionStart = targetCode.TextLength;
+
                     secondarySourceCode.Text = sec_source_code;
                     secondarySourceCodeCondition.Text = sec_source_code_cond;
                     documentationText.Text = documentation;
+
                     mappingVersion.Text = "" + version;
                     currentLevelIndicator.Text = showAbove.Items[Int32.Parse(mapping_level)].ToString();
                     userRejectTo = Int32.Parse(mapping_level);
@@ -1846,8 +1855,7 @@ namespace UKER_Mapper
                     {
                         if (!doNotRemove) mappingTermsList.Items.RemoveAt(n);
                     }
-                    if (mappingTermsList.Items[n].ToString().Equals(targetCode.Text.Trim() + " (gelöscht)") ||
-                        mappingTermsList.Items[n].ToString().Equals(targetCode.Text.Trim() + " (deleted)") ||
+                    if (mappingTermsList.Items[n].ToString().Equals("(X) " + targetCode.Text.Trim()) ||
                         mappingTermsList.Items[n].ToString().Equals(targetCode.Text.Trim()))
                     {
                         mappingTermsList.SelectedIndex = n;
@@ -1921,6 +1929,7 @@ namespace UKER_Mapper
         private void targetCode_Leave(object sender, EventArgs e) // User has left the target code field, clean the code
         {
             targetCode.Text = targetCode.Text.Trim();
+            targetCode.SelectionStart = targetCode.TextLength;
         }
 
         private void targetCode_TextChanged(object sender, EventArgs e) // User has modified the target code field, notify about unsaved changes
@@ -1946,7 +1955,7 @@ namespace UKER_Mapper
             if (eventHandlersDisabled > 0) return;
             setUnsavedChanges(1);
         }
-
+               
     }
 
     public class ListboxItem

@@ -82,6 +82,7 @@
             // 
             resources.ApplyResources(this.mappingTermsList, "mappingTermsList");
             this.mappingTermsList.Name = "mappingTermsList";
+            this.mappingTermsList.Sorted = true;
             this.mappingTermsList.SelectedIndexChanged += new System.EventHandler(this.mappingTermsList_SelectedIndexChanged);
             // 
             // label1
