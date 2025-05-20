@@ -239,6 +239,7 @@
             // 
             resources.ApplyResources(this.sourceFilter, "sourceFilter");
             this.sourceFilter.Name = "sourceFilter";
+            this.sourceFilter.TextChanged += new System.EventHandler(this.sourceFilter_TextChanged);
             this.sourceFilter.KeyDown += new System.Windows.Forms.KeyEventHandler(this.sourceFilter_KeyDown);
             // 
             // label10

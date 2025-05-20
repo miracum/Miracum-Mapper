@@ -1303,10 +1303,10 @@
     <value>7</value>
   </data>
   <data name="blockPanel.Location" type="System.Drawing.Point, System.Drawing">
-    <value>9, 9</value>
+    <value>6, 9</value>
   </data>
   <data name="blockPanel.Size" type="System.Drawing.Size, System.Drawing">
-    <value>393, 542</value>
+    <value>396, 542</value>
   </data>
   <data name="blockPanel.TabIndex" type="System.Int32, mscorlib">
     <value>50</value>
@@ -1590,7 +1590,7 @@
     <value>NoControl</value>
   </data>
   <data name="$this.Text" xml:space="preserve">
-    <value>MIRACUM Mapper (Version 1.9.1, 2025-05-15)</value>
+    <value>MIRACUM Mapper (Version 1.10.0, 2025-05-20)</value>
   </data>
   <data name="&gt;&gt;$this.Name" xml:space="preserve">
     <value>mapperForm</value>

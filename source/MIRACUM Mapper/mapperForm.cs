@@ -601,7 +601,12 @@ namespace UKER_Mapper
                     string[] words = sourceFilter.Text.Split(' ');
                     for (int a = 0; a < words.Length; a++)
                     {
-                        textFilter = textFilter + " AND upper(source_code || source_desc || documentation || target_code) SIMILAR TO '" + words[a].ToUpper() + "'";
+                        String sWord = words[a].ToUpper();
+                        if (!sWord.Contains("%"))
+                        {
+                            sWord = "%" + sWord + "%";
+                        }
+                        textFilter = textFilter + " AND upper(source_code || source_desc || documentation || target_code) SIMILAR TO '" + sWord + "'";
                     }
                 }
 
@@ -1611,16 +1616,7 @@ namespace UKER_Mapper
 
             if (e.KeyCode == Keys.Enter)
             {
-                if (!sourceFilter.Text.Contains("%") && !sourceFilter.Text.Equals(""))
-                {
-                    string[] words = sourceFilter.Text.Split(' ');
-                    sourceFilter.Text = "";
-                    for (int a = 0; a < words.Length; a++)
-                    {
-                        sourceFilter.Text = sourceFilter.Text + " %" + words[a] + "%";
-                    }
-                    sourceFilter.Text = sourceFilter.Text.Trim();
-                }
+
                 mappingTermsList.Items.Clear();
                 targetCode.Text = "";
                 secondarySourceCode.Text = "";
