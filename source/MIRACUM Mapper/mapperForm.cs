@@ -606,7 +606,7 @@ namespace UKER_Mapper
                         {
                             sWord = "%" + sWord + "%";
                         }
-                        textFilter = textFilter + " AND upper(source_code || source_desc || documentation || target_code) SIMILAR TO '" + sWord + "'";
+                        textFilter = textFilter + " AND (upper(source_code) SIMILAR TO'" + sWord + "' OR upper(source_desc) SIMILAR TO '" + sWord + "' OR upper(documentation) SIMILAR TO '" + sWord + "' OR upper(target_code) SIMILAR TO '" + sWord + "')";
                     }
                 }
 
