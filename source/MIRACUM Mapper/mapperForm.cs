@@ -2016,6 +2016,16 @@ namespace UKER_Mapper
             }
             return returnText;
         }
+
+        private void TermInfo_LinkClicked(object sender, LinkClickedEventArgs e)
+        {
+            System.Diagnostics.Process.Start(e.LinkText);
+        }
+
+        private void documentationText_LinkClicked(object sender, LinkClickedEventArgs e)
+        {
+            System.Diagnostics.Process.Start(e.LinkText);
+        }
     }
 
     public class ListboxItem

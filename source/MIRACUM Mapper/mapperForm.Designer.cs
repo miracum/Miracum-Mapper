@@ -181,6 +181,7 @@
             this.documentationText.BackColor = System.Drawing.SystemColors.Window;
             resources.ApplyResources(this.documentationText, "documentationText");
             this.documentationText.Name = "documentationText";
+            this.documentationText.LinkClicked += new System.Windows.Forms.LinkClickedEventHandler(this.documentationText_LinkClicked);
             this.documentationText.TextChanged += new System.EventHandler(this.documentationText_TextChanged);
             this.documentationText.Leave += new System.EventHandler(this.documentation_Leave);
             // 
@@ -227,6 +228,7 @@
             resources.ApplyResources(this.TermInfo, "TermInfo");
             this.TermInfo.Name = "TermInfo";
             this.TermInfo.ReadOnly = true;
+            this.TermInfo.LinkClicked += new System.Windows.Forms.LinkClickedEventHandler(this.TermInfo_LinkClicked);
             // 
             // logInButton
             // 
