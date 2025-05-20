@@ -60,6 +60,7 @@ namespace UKER_Mapper
         private string lastSaved = "";
         private string jdbcConnectionString = "";
         private string activeDirectoryServer = "";
+        private string visualizerUrl = "";
         private int lastSelectedMapping = 0;
         private int unsavedChanges = 0;
         private int userNotified = 0;
@@ -88,7 +89,10 @@ namespace UKER_Mapper
             {
                 NpgsqlConnection conn = new NpgsqlConnection(jdbcConnectionString);
                 conn.Open();
-                var cmd = new NpgsqlCommand("INSERT INTO log (text) VALUES ('" + text + "')", conn);
+                var cmd = new NpgsqlCommand();
+                cmd.CommandText = "INSERT INTO log (text) VALUES (@text)";
+                cmd.Parameters.AddWithValue("text", text);
+                cmd.Connection = conn;
                 cmd.ExecuteNonQuery();
                 conn.Close();
             }
@@ -115,7 +119,7 @@ namespace UKER_Mapper
                 orWidth.Add(cnt.Width);
                 orHeigth.Add(cnt.Height);
                 orFontSize.Add(cnt.Font.Size);
-           }
+            }
         }
 
         protected override void OnResize(System.EventArgs e)
@@ -142,7 +146,7 @@ namespace UKER_Mapper
             cnt.Width = orWidth[i];
             cnt.Height = orHeigth[i];
             cnt.Font = new Font(cnt.Font.FontFamily.Name, orFontSize[i], cnt.Font.Style);
-            
+
         }
 
         private void ResizeAll(Control cnt, Size newSize)
@@ -191,6 +195,10 @@ namespace UKER_Mapper
             configFile = configFile.Replace("\r", "");
             jdbcConnectionString = configFile.Split('\n')[0].Trim().Replace("\r", "").Replace("\n", "");
             activeDirectoryServer = configFile.Split('\n')[1].Trim().Replace("\r", "").Replace("\n", "");
+            if (configFile.Split('\n').Length > 2)
+            {
+                visualizerUrl = configFile.Split('\n')[2].Trim().Replace("\r", "").Replace("\n", "");
+            }
 
 
             InitializeComponent();
@@ -255,12 +263,13 @@ namespace UKER_Mapper
                 NpgsqlConnection conn = new NpgsqlConnection(jdbcConnectionString);
                 conn.Open();
 
-                using (var cmd = new NpgsqlCommand("SELECT requiresversion FROM requiresversion", conn))
-                using (var reader = cmd.ExecuteReader())
-                    while (reader.Read())
-                    {
-                        reqVersion = Int32.Parse(reader["requiresversion"].ToString());
-                    }
+                var cmd = new NpgsqlCommand("SELECT requiresversion FROM requiresversion", conn);
+                var reader = cmd.ExecuteReader();
+                while (reader.Read())
+                {
+                    reqVersion = Int32.Parse(reader["requiresversion"].ToString());
+                }
+                reader.Close();
                 conn.Close();
             }
             catch (Exception msg)
@@ -280,17 +289,16 @@ namespace UKER_Mapper
             {
                 NpgsqlConnection conn = new NpgsqlConnection(jdbcConnectionString);
                 conn.Open();
-
-                using (var cmd = new NpgsqlCommand("SELECT column_name FROM information_schema.columns WHERE table_name = 'userids' and column_name = 'local_password_md5'", conn))
-                using (var reader = cmd.ExecuteReader())
-                    while (reader.Read())
+                var cmd = new NpgsqlCommand("SELECT column_name FROM information_schema.columns WHERE table_name = 'userids' and column_name = 'local_password_md5'", conn);
+                var reader = cmd.ExecuteReader();
+                while (reader.Read())
+                {
+                    if (reader["column_name"].ToString().Equals("local_password_md5"))
                     {
-                        if (reader["column_name"].ToString().Equals("local_password_md5"))
-                        {
-                            schemaVersion = 2;
-                        }
-                        ;
+                        schemaVersion = 2;
                     }
+                }
+                reader.Close();
                 conn.Close();
             }
             catch (Exception msg)
@@ -307,13 +315,13 @@ namespace UKER_Mapper
                 {
                     NpgsqlConnection conn = new NpgsqlConnection(jdbcConnectionString);
                     conn.Open();
-
-                    using (var cmd = new NpgsqlCommand("select schemaversion from schemaversion", conn))
-                    using (var reader = cmd.ExecuteReader())
-                        while (reader.Read())
-                        {
-                            schemaVersion = Int32.Parse(reader["schemaversion"].ToString());
-                        }
+                    var cmd = new NpgsqlCommand("select schemaversion from schemaversion", conn);
+                    var reader = cmd.ExecuteReader();
+                    while (reader.Read())
+                    {
+                        schemaVersion = Int32.Parse(reader["schemaversion"].ToString());
+                    }
+                    reader.Close();
                     conn.Close();
                 }
                 catch (Exception msg)
@@ -330,36 +338,40 @@ namespace UKER_Mapper
 
                 String nextJdbcConnectionString = "";
                 String nextActiveDirectoryServer = "";
+                String nextVisualizerUrl = "";
 
                 try
                 {
                     NpgsqlConnection conn = new NpgsqlConnection(jdbcConnectionString);
                     conn.Open();
-
-                    using (var cmd = new NpgsqlCommand("select db, ldap from next_connection", conn))
-                    using (var reader = cmd.ExecuteReader())
-                        while (reader.Read())
-                        {
-                            nextJdbcConnectionString = reader["db"].ToString().Trim().Replace("\r", "").Replace("\n", "");
-                            nextActiveDirectoryServer = reader["ldap"].ToString().Trim().Replace("\r", "").Replace("\n", "");
-                        }
+                    var cmd = new NpgsqlCommand("select db, ldap, visualizer from next_connection", conn);
+                    var reader = cmd.ExecuteReader();
+                    while (reader.Read())
+                    {
+                        nextJdbcConnectionString = reader["db"].ToString().Trim().Replace("\r", "").Replace("\n", "");
+                        nextActiveDirectoryServer = reader["ldap"].ToString().Trim().Replace("\r", "").Replace("\n", "");
+                        nextVisualizerUrl = reader["visualizer"].ToString().Trim().Replace("\r", "").Replace("\n", "");
+                    }
+                    reader.Close();
                     conn.Close();
 
-                    if (!String.Equals(nextActiveDirectoryServer, activeDirectoryServer) || !String.Equals(nextJdbcConnectionString, jdbcConnectionString))
+                    if (!String.Equals(nextActiveDirectoryServer, activeDirectoryServer) || !String.Equals(nextJdbcConnectionString, jdbcConnectionString) || !String.Equals(nextVisualizerUrl, visualizerUrl))
                     {
-                        File.WriteAllBytes(@"config.dat", Encoding.ASCII.GetBytes(EncDec.Encrypt(nextJdbcConnectionString + "\n" + nextActiveDirectoryServer, "TrustNo1")));
+                        File.WriteAllBytes(@"config.dat", Encoding.ASCII.GetBytes(EncDec.Encrypt(nextJdbcConnectionString + "\n" + nextActiveDirectoryServer + "\n" + nextVisualizerUrl, "TrustNo1")));
                     }
                     if (!String.Equals(nextActiveDirectoryServer, activeDirectoryServer))
                     {
-                        MessageBox.Show("LDAP server configuration has been updated. Please restart program.", "MIRACUM Mapper");
-                        activeDirectoryServer = nextActiveDirectoryServer;
+                        MessageBox.Show("LDAP server configuration has been updated. Please restart the program.", "MIRACUM Mapper");
                         terminate();
                     }
                     if (!String.Equals(nextJdbcConnectionString, jdbcConnectionString))
                     {
-                        jdbcConnectionString = nextJdbcConnectionString;
-                        MessageBox.Show("Database server configuration has been updated. Please restart program.", "MIRACUM Mapper");
-                        jdbcConnectionString = nextJdbcConnectionString;
+                        MessageBox.Show("Database server configuration has been updated. Please restart the program.", "MIRACUM Mapper");
+                        terminate();
+                    }
+                    if (!String.Equals(nextVisualizerUrl, visualizerUrl))
+                    {
+                        MessageBox.Show("Visualizer server configuration has been updated. Please restart the program.", "MIRACUM Mapper");
                         terminate();
                     }
                 }
@@ -370,9 +382,6 @@ namespace UKER_Mapper
                     terminate();
                 }
             }
-
-
-
         }
 
         private void terminate() // Terminate program
@@ -408,22 +417,25 @@ namespace UKER_Mapper
             {
                 NpgsqlConnection conn = new NpgsqlConnection(jdbcConnectionString);
                 conn.Open();
+                var cmd = new NpgsqlCommand();
+                cmd.CommandText = "SELECT userid, enabled, filterfrom, filterto, allowbrowsehistory, forcedfilter, transitions FROM userids WHERE userid = @user";
+                cmd.Parameters.AddWithValue("user", user);
+                cmd.Connection = conn;
 
-                using (var cmd = new NpgsqlCommand("SELECT userid, enabled, filterfrom, filterto, allowbrowsehistory, forcedfilter, transitions FROM userids WHERE userid = '" + user + "'", conn))
-
-                using (var reader = cmd.ExecuteReader())
-                    while (reader.Read())
-                    {
-                        if (reader["userid"].ToString().Equals(user)) authenticated = true;
-                        if (reader["enabled"].ToString().Equals("True")) enabled = true;
-                        userFilterFrom = Int32.Parse(reader["filterfrom"].ToString());
-                        userFilterTo = Int32.Parse(reader["filterto"].ToString());
-                        userTransitions = reader["transitions"].ToString();
-                        if (reader["allowbrowsehistory"].ToString().Equals("True")) userAllowBrowseHistory = true;
-                        userForcedFilter = reader["forcedfilter"].ToString();
-                    }
+                var reader = cmd.ExecuteReader();
+                while (reader.Read())
+                {
+                    if (reader["userid"].ToString().Equals(user)) authenticated = true;
+                    if (reader["enabled"].ToString().Equals("True")) enabled = true;
+                    userFilterFrom = Int32.Parse(reader["filterfrom"].ToString());
+                    userFilterTo = Int32.Parse(reader["filterto"].ToString());
+                    userTransitions = reader["transitions"].ToString();
+                    if (reader["allowbrowsehistory"].ToString().Equals("True")) userAllowBrowseHistory = true;
+                    userForcedFilter = reader["forcedfilter"].ToString();
+                }
+                reader.Close();
+                conn.Close();
             }
-
             catch (Exception msg)
             {
                 MessageBox.Show(msg.ToString(), "MIRACUM Mapper: ERROR");
@@ -442,7 +454,12 @@ namespace UKER_Mapper
                 log("User " + user + " authenticated.");
                 sourceTermsList.Enabled = true;
                 mappingTermsList.Enabled = true;
-                visualizeBtn.Enabled = true;
+
+                if (visualizerUrl.Contains("http"))
+                {
+                    visualizeBtn.Enabled = true;
+                }
+
                 sourceFilter.Enabled = true;
                 showAbove.Enabled = true;
                 showBelow.Enabled = true;
@@ -466,7 +483,10 @@ namespace UKER_Mapper
                     {
                         NpgsqlConnection conn = new NpgsqlConnection(jdbcConnectionString);
                         conn.Open();
-                        var cmd = new NpgsqlCommand("INSERT INTO userids (userid) VALUES ('" + user + "')", conn);
+                        var cmd = new NpgsqlCommand();
+                        cmd.CommandText = "INSERT INTO userids (userid) VALUES (@user)";
+                        cmd.Parameters.AddWithValue("user", user);
+                        cmd.Connection = conn;
                         cmd.ExecuteNonQuery();
                         conn.Close();
                     }
@@ -509,27 +529,29 @@ namespace UKER_Mapper
                 // Read Expert Levels from Database
                 int maxLevel = 0;
                 int index = 0;
-                using (var cmd = new NpgsqlCommand("SELECT description, level FROM expertlevel ORDER BY level", conn))
-                using (var reader = cmd.ExecuteReader())
-                    while (reader.Read())
+                var cmd = new NpgsqlCommand("SELECT description, level FROM expertlevel ORDER BY level", conn);
+                var reader = cmd.ExecuteReader();
+                while (reader.Read())
+                {
+                    string description = reader["description"].ToString();
+                    int level = Int32.Parse(reader["level"].ToString());
+
+                    showAbove.Items.Add(translate(description));
+                    if (level == userFilterFrom)
                     {
-                        string description = reader["description"].ToString();
-                        int level = Int32.Parse(reader["level"].ToString());
-
-                        showAbove.Items.Add(translate(description));
-                        if (level == userFilterFrom)
-                        {
-                            showAbove.SelectedIndex = index;
-                        }
-
-                        showBelow.Items.Add(translate(description));
-                        if (level == userFilterTo)
-                        {
-                            showBelow.SelectedIndex = index;
-                        }
-
-                        index++;
+                        showAbove.SelectedIndex = index;
                     }
+
+                    showBelow.Items.Add(translate(description));
+                    if (level == userFilterTo)
+                    {
+                        showBelow.SelectedIndex = index;
+                    }
+
+                    index++;
+                }
+                reader.Close();
+                conn.Close();
             }
             catch (Exception msg)
             {
@@ -564,13 +586,14 @@ namespace UKER_Mapper
 
                 List<String> alreadyMapped = new List<String>();
 
-                using (var cmd = new NpgsqlCommand("SELECT distinct source_code FROM mapping", conn))
-                using (var reader = cmd.ExecuteReader())
-                    while (reader.Read())
-                    {
-                        string source_code = reader["source_code"].ToString();
-                        alreadyMapped.Add(source_code);
-                    }
+                var cmd = new NpgsqlCommand("SELECT distinct source_code FROM mapping", conn);
+                var reader = cmd.ExecuteReader();
+                while (reader.Read())
+                {
+                    string source_code = reader["source_code"].ToString();
+                    alreadyMapped.Add(source_code);
+                }
+                reader.Close();
 
                 string textFilter = " ";
                 if (!sourceFilter.Text.Equals(""))
@@ -621,25 +644,25 @@ namespace UKER_Mapper
                 try
                 {
 
-                    using (var cmd = new NpgsqlCommand(sql, conn))
-                    using (var reader = cmd.ExecuteReader())
-                        while (reader.Read())
+                    var cmd2 = new NpgsqlCommand(sql, conn);
+                    var reader2 = cmd2.ExecuteReader();
+                    while (reader2.Read())
+                    {
+                        string source_code = reader2["source_code"].ToString();
+                        string source_desc = reader2["source_desc"].ToString();
+                        ListboxItem item = new ListboxItem();
+
+                        string tag = "";
+                        if (alreadyMapped.Contains(source_code))
                         {
-                            string source_code = reader["source_code"].ToString();
-                            string source_desc = reader["source_desc"].ToString();
-                            ListboxItem item = new ListboxItem();
-
-                            string tag = "";
-                            if (alreadyMapped.Contains(source_code))
-                            {
-                                tag = "**** ";
-                            }
-
-                            item.Text = source_code;
-                            sourceTermsList.Items.Add(item);
+                            tag = "**** ";
                         }
-                }
 
+                        item.Text = source_code;
+                        sourceTermsList.Items.Add(item);
+                    }
+                    reader2.Close();
+                }
                 catch (Exception msg)
                 {
                     MessageBox.Show("Invalid filter expression!", "MIRACUM Mapper: ERROR");
@@ -689,7 +712,7 @@ namespace UKER_Mapper
             {
                 string item = listBox.Items[i].ToString();
                 if (backupItemName[index].Replace("(X) ", "").Equals(item) ||
-                    ("(X) " + backupItemName[index] ).Equals(item))
+                    ("(X) " + backupItemName[index]).Equals(item))
                 {
                     listBox.SetSelected(i, true);
                     break;
@@ -949,15 +972,24 @@ namespace UKER_Mapper
                 string version = mappingVersion.Text;
                 string deleted = "0";
                 if (isDeleted) deleted = "1";
-                string insertString = "'" + source_code + "', '" + target_code + "', '" + sec_source_code + "', '" + sec_source_code_cond + "', '" + documentation + "', '" + mapping_level + "', " + version + ", " + deleted + "" +
-                    ", '" + userLoggedIn + "', '" + this.Text + "'";
+                //string insertString = "'" + source_code + "', '" + target_code + "', '" + sec_source_code + "', '" + sec_source_code_cond + "', '" + documentation + "', '" + mapping_level + "', " + version + ", " + deleted + "" +
+                //    ", '" + userLoggedIn + "', '" + this.Text + "'";
+
                 NpgsqlConnection conn = new NpgsqlConnection(jdbcConnectionString);
                 conn.Open();
-
-                string sql = "INSERT INTO mapping (source_code, target_code, sec_source_code, sec_source_code_cond, documentation, mapping_level, version, deleted, saved_by, sw_version) " +
-                    "VALUES (" + insertString + ")";
-
-                var cmd = new NpgsqlCommand(sql, conn);
+                var cmd = new NpgsqlCommand();
+                cmd.CommandText = "INSERT INTO mapping (source_code, target_code, sec_source_code, sec_source_code_cond, documentation, mapping_level, version, deleted, saved_by, sw_version) VALUES (@source_code, @target_code, @sec_source_code, @sec_source_code_cond, @documentation, @mapping_level,@version, @deleted, @userLoggedIn, @thisText)";
+                cmd.Parameters.AddWithValue("source_code", source_code);
+                cmd.Parameters.AddWithValue("target_code", target_code);
+                cmd.Parameters.AddWithValue("sec_source_code", sec_source_code);
+                cmd.Parameters.AddWithValue("sec_source_code_cond", sec_source_code_cond);
+                cmd.Parameters.AddWithValue("documentation", documentation);
+                cmd.Parameters.AddWithValue("mapping_level", Int32.Parse(mapping_level));
+                cmd.Parameters.AddWithValue("version", Int32.Parse(version));
+                cmd.Parameters.AddWithValue("deleted", Int32.Parse(deleted));
+                cmd.Parameters.AddWithValue("userLoggedIn", userLoggedIn);
+                cmd.Parameters.AddWithValue("thisText", this.Text);
+                cmd.Connection = conn;
                 cmd.ExecuteNonQuery();
                 conn.Close();
             }
@@ -1000,7 +1032,7 @@ namespace UKER_Mapper
 
         private void updateLabVisalizer() // Update the Miracum LabVisualizer
         {
-            if (sourceTermsList.SelectedItem != null && wb.Visible) wb.showUrl("http://svm-ap-dizlnc1p.srv.uk-erlangen.de:3838/?" + sourceTermsList.SelectedItem.ToString());
+            if (sourceTermsList.SelectedItem != null && wb.Visible) wb.showUrl(visualizerUrl + sourceTermsList.SelectedItem.ToString());
         }
 
         private void disableInputFields() // Hide the input fields on the right lower side
@@ -1045,7 +1077,10 @@ namespace UKER_Mapper
                 {
                     NpgsqlConnection conn1 = new NpgsqlConnection(jdbcConnectionString);
                     conn1.Open();
-                    NpgsqlCommand cmd1 = new NpgsqlCommand("SELECT source_code, source_desc FROM sourceterms WHERE source_code = '" + selectedSourceTerm + "'", conn1);
+                    var cmd1 = new NpgsqlCommand();
+                    cmd1.CommandText = "SELECT source_code, source_desc FROM sourceterms WHERE source_code = @selectedSourceTerm";
+                    cmd1.Parameters.AddWithValue("selectedSourceTerm", selectedSourceTerm);
+                    cmd1.Connection = conn1;
 
                     NpgsqlDataReader reader1 = cmd1.ExecuteReader();
                     while (reader1.Read())
@@ -1053,6 +1088,7 @@ namespace UKER_Mapper
                         SourceDescr.Text = reader1["source_desc"].ToString();
                     }
                     reader1.Close();
+
 
                     // Add all mappings
 
@@ -1122,7 +1158,6 @@ namespace UKER_Mapper
                     MessageBox.Show(msg.ToString(), "MIRACUM Mapper: ERROR");
                     throw;
                 }
-
 
                 if (mappingTermsList.Items.Count > 0)
                 {
@@ -1195,16 +1230,17 @@ namespace UKER_Mapper
             {
                 NpgsqlConnection conn = new NpgsqlConnection(jdbcConnectionString);
                 conn.Open();
-                using (var
+                var
                     cmd = new NpgsqlCommand(
                     "SELECT level FROM expertlevel WHERE description = '" +
                     showAbove.SelectedItem.ToString() + "'"
-                    , conn))
-                using (var reader = cmd.ExecuteReader())
-                    while (reader.Read())
-                    {
-                        filterFromLevel = reader.GetInt32(0);
-                    }
+                    , conn);
+                var reader = cmd.ExecuteReader();
+                while (reader.Read())
+                {
+                    filterFromLevel = reader.GetInt32(0);
+                }
+                reader.Close();
                 conn.Close();
             }
             catch (Exception msg)
@@ -1229,18 +1265,18 @@ namespace UKER_Mapper
         private void setFilterToLevel()
         {
             printDebug("calling " + System.Reflection.MethodBase.GetCurrentMethod().Name + "()");
-
             startWorking();
             try
             {
                 NpgsqlConnection conn = new NpgsqlConnection(jdbcConnectionString);
                 conn.Open();
-                using (var cmd = new NpgsqlCommand("SELECT level FROM expertlevel WHERE description = '" + showBelow.SelectedItem.ToString() + "'", conn))
-                using (var reader = cmd.ExecuteReader())
-                    while (reader.Read())
-                    {
-                        filterToLevel = reader.GetInt32(0);
-                    }
+                var cmd = new NpgsqlCommand("SELECT level FROM expertlevel WHERE description = '" + showBelow.SelectedItem.ToString() + "'", conn);
+                var reader = cmd.ExecuteReader();
+                while (reader.Read())
+                {
+                    filterToLevel = reader.GetInt32(0);
+                }
+                reader.Close();
                 conn.Close();
 
             }
@@ -1319,7 +1355,7 @@ namespace UKER_Mapper
             {
                 tCode = tCode.Replace("(X) ", "");
             }
-                        
+
             startWorking();
 
             if (!keepTargetCode)
@@ -1414,6 +1450,7 @@ namespace UKER_Mapper
 
                     loadTransitions(Int32.Parse(mapping_level));
                 }
+                reader.Close();
                 conn.Close();
             }
             catch (Exception msg)
@@ -1504,15 +1541,20 @@ namespace UKER_Mapper
             log("DB schema version: " + schemaVersion);
             if (schemaVersion >= 2)
             {
+                string userid = lf.user.Text;
                 NpgsqlConnection conn = new NpgsqlConnection(jdbcConnectionString);
                 conn.Open();
-                using (var cmd = new NpgsqlCommand("select local_password_md5 from userids where userid = '" + lf.user.Text + "'", conn))
-                using (var reader = cmd.ExecuteReader())
-                    while (reader.Read())
-                    {
-                        local_password = reader["local_password_md5"].ToString();
-                        log("Found a local user password to be used for authentication.");
-                    }
+                var cmd = new NpgsqlCommand();
+                cmd.CommandText = "select local_password_md5 from userids where userid = @userid";
+                cmd.Parameters.AddWithValue("userid", userid);
+                cmd.Connection = conn;
+                var reader = cmd.ExecuteReader();
+                while (reader.Read())
+                {
+                    local_password = reader["local_password_md5"].ToString();
+                    log("Found a local user password to be used for authentication.");
+                }
+                reader.Close();
                 conn.Close();
             }
 
@@ -1638,13 +1680,17 @@ namespace UKER_Mapper
 
                 NpgsqlConnection conn = new NpgsqlConnection(jdbcConnectionString);
                 conn.Open();
-                using (var cmd = new NpgsqlCommand("SELECT description FROM terminfo where code = '" + targetCode.Text.Trim() + "'", conn))
-                using (var reader = cmd.ExecuteReader())
-                    while (reader.Read())
-                    {
-                        string description = reader["description"].ToString();
-                        TermInfo.Text = description;
-                    }
+                var cmd = new NpgsqlCommand();
+                cmd.CommandText = "SELECT description FROM terminfo where code = @targetCode";
+                cmd.Parameters.AddWithValue("targetCode", targetCode.Text.Trim());
+                cmd.Connection = conn;
+                var reader = cmd.ExecuteReader();
+                while (reader.Read())
+                {
+                    string description = reader["description"].ToString();
+                    TermInfo.Text = description;
+                }
+                reader.Close();
                 conn.Close();
             }
             catch (Exception msg)
@@ -1665,13 +1711,13 @@ namespace UKER_Mapper
             {
                 NpgsqlConnection conn = new NpgsqlConnection(jdbcConnectionString);
                 conn.Open();
-                using (var cmd = new NpgsqlCommand("SELECT level FROM expertlevel WHERE description = '" + sendToAccept.SelectedItem.ToString() + "'", conn))
-                using (var reader = cmd.ExecuteReader())
-                    while (reader.Read())
-                    {
-                        userAcceptTo = reader.GetInt32(0);
-                    }
-
+                var cmd = new NpgsqlCommand("SELECT level FROM expertlevel WHERE description = '" + sendToAccept.SelectedItem.ToString() + "'", conn);
+                var reader = cmd.ExecuteReader();
+                while (reader.Read())
+                {
+                    userAcceptTo = reader.GetInt32(0);
+                }
+                reader.Close();
                 conn.Close();
             }
             catch (Exception msg)
@@ -1934,28 +1980,46 @@ namespace UKER_Mapper
 
         private void targetCode_TextChanged(object sender, EventArgs e) // User has modified the target code field, notify about unsaved changes
         {
+            targetCode.Text = sanitizeInput(targetCode.Text);
             if (eventHandlersDisabled > 0) return;
             setUnsavedChanges(1);
         }
 
         private void documentationText_TextChanged(object sender, EventArgs e) // User has modified the documentation field, notify about unsaved changes
         {
+            //documentationText.Text = sanitizeInput(documentationText.Text);
             if (eventHandlersDisabled > 0) return;
             setUnsavedChanges(1);
         }
 
         private void secondarySourceCode_TextChanged(object sender, EventArgs e) // User has modified the secondary code field, notify about unsaved changes
         {
+            secondarySourceCode.Text = sanitizeInput(secondarySourceCode.Text);
             if (eventHandlersDisabled > 0) return;
             setUnsavedChanges(1);
         }
 
         private void secondarySourceCodeCondition_TextChanged(object sender, EventArgs e) // User has modified the condition field, notify about unsaved changes
         {
+            secondarySourceCodeCondition.Text = sanitizeInput(secondarySourceCodeCondition.Text);
             if (eventHandlersDisabled > 0) return;
             setUnsavedChanges(1);
         }
-               
+
+        private void sourceFilter_TextChanged(object sender, EventArgs e)
+        {
+            sourceFilter.Text = sanitizeInput(sourceFilter.Text);
+        }
+
+        private string sanitizeInput(string text)
+        {
+            String returnText = text.Replace("--", "").Replace("/*", "").Replace("*/", "").Replace("\"", "").Replace("'", "").Replace(";", "");
+            if (!text.Equals(returnText))
+            {
+                MessageBox.Show("Ungültige Eingabe erkannt!", "MIRACUM Mapper");
+            }
+            return returnText;
+        }
     }
 
     public class ListboxItem
