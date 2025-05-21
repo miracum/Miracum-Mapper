@@ -41,7 +41,9 @@ The tool is a small Windows application that runs locally on a Windows PC. It co
 
 When you run the program for the first time, it should not start as it still requires a correctly configured configuration file (Config.dat). This file stores the connection to the PostgreSQL database and the LDAP server. Note that the file is encrypted when it is processed by the program the first time, even if it has not yet been configured. It is a good idea to configure this file correctly in a binary distribution folder (which can be downloaded from the GitHub artifacts on the right) and instruct VS during development to also execute the temporary builds in this folder.
 
-Since version 1.9.0: The configuration is now also saved in the database and retrieved by the program at startup. This makes it possible to automatically update the clients to a new configuration without manually distributing a Config.dat file. It is therefore necessary to also place the configuration in the database ("next_connection" table).
+Since version 1.9.0: The configuration is now also saved in the database and retrieved by the program at startup. This makes it possible to automatically update the clients to a new configuration without manually distributing a "Config.dat" file. It is therefore necessary to also store the configuration in the database ("next_connection" table).
+
+Since version 1.11.0: The program now saves updated database connections in the Windows registry instead of in the Config.dat file (it however tries to encrypt the file if it's not yet encrypted). It will always prefer the registry to the "Config.dat" file. To enable multiple MIRACUM Mapper instances/copies with different database connections, a "Project.dat" file storing a project identifier can be placed in the program directory, which is then used as the key to access the Windows registry. The keys are collected in "HKEY_CURRENT_USER\SOFTWARE\Miracum-Mapper". If there is no "Project.dat" file, the project is handled internally with the identifier "Default".
 
 ### Database Schema
 

@@ -1590,7 +1590,7 @@
     <value>NoControl</value>
   </data>
   <data name="$this.Text" xml:space="preserve">
-    <value>MIRACUM Mapper (Version 1.10.0, 2025-05-20)</value>
+    <value>MIRACUM Mapper (Version 1.11.0, 2025-05-21)</value>
   </data>
   <data name="&gt;&gt;$this.Name" xml:space="preserve">
     <value>mapperForm</value>

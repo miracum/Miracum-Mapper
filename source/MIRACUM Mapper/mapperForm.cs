@@ -36,6 +36,8 @@ using System.IO;
 using System.Globalization;
 using System.Threading.Tasks;
 using System.Runtime.InteropServices;
+using Microsoft.Win32;
+using System.Data.Common;
 
 namespace UKER_Mapper
 {
@@ -78,6 +80,8 @@ namespace UKER_Mapper
         NpgsqlConnection dbConnection1;
         NpgsqlConnection dbConnection2;
         NpgsqlConnection dbConnection3;
+
+        String projectIndentifier = "Default";
 
         public void printDebug(string msg) // Direct debugging output
         {
@@ -171,33 +175,95 @@ namespace UKER_Mapper
             // Overall initialization of the program
 
             printDebug("calling " + System.Reflection.MethodBase.GetCurrentMethod().Name + "()");
-            String configFile = "";
 
-            // De-/Encrypt configuration file
+
+            if (File.Exists(@"Project.dat"))
+            {
+                projectIndentifier = File.ReadAllText(@"Project.dat", Encoding.ASCII);
+            }
+
+            String connectionData = "", encrypted = "";
+            // Try to get the connection data from the Windows registry:
+            RegistryKey registryKey = Registry.CurrentUser.OpenSubKey(@"SOFTWARE\Miracum-Mapper");
+
+            if (registryKey != null && registryKey.GetValue(projectIndentifier) != null) // It's already in the Windows registry, so load it from there.
+            {
+                encrypted = (string)registryKey.GetValue(projectIndentifier);
+                connectionData = EncDec.Decrypt(encrypted, "TrustNo1");
+            }
+
+            // Read and check if the configuration file needs to be encrypted:
             try
             {
-                configFile = File.ReadAllText(@"config.dat", Encoding.ASCII);
-                if (configFile.Contains("Server")) // It's not yet encrypted, so encrypt it
+
+                if (File.Exists(@"Config.dat"))
                 {
-                    File.WriteAllBytes(@"config.dat", Encoding.ASCII.GetBytes(EncDec.Encrypt(configFile, "TrustNo1")));
+
+                    String fileContents = File.ReadAllText(@"Config.dat", Encoding.ASCII);
+                    String encryptedFile;
+
+                    if (fileContents.Contains("Server")) // It's not encrypted, so encrypt and store it away.
+                    {
+                        encryptedFile = EncDec.Encrypt(fileContents, "TrustNo1");
+                        File.WriteAllText(@"config.dat", encryptedFile);
+                    }
+                    else  // It's encrypted, so decrypt it
+                    {
+                        encryptedFile = fileContents;
+                        fileContents = EncDec.Decrypt(fileContents, "TrustNo1");
+                    }
+
+                    if (registryKey == null || registryKey.GetValue(projectIndentifier) == null) // It's not stored in the Windows registry yet
+                    {
+                        connectionData = fileContents;
+
+                        // Store connection data in registry:
+                        RegistryKey newKey = Registry.CurrentUser.CreateSubKey(@"SOFTWARE\Miracum-Mapper");
+                        newKey.SetValue(projectIndentifier, encryptedFile);
+                        newKey.Close();
+                    }
                 }
-                else  // It's encrypted, so decrypt it
-                {
-                    configFile = EncDec.Decrypt(configFile, "TrustNo1");
-                }
+
             }
             catch (Exception e)
             {
-                MessageBox.Show("Failed to load configuration file!", "MIRACUM Mapper: ERROR");
+                MessageBox.Show("Failed to process configuration file!", "MIRACUM Mapper: ERROR");
                 terminate();
             }
 
-            configFile = configFile.Replace("\r", "");
-            jdbcConnectionString = configFile.Split('\n')[0].Trim().Replace("\r", "").Replace("\n", "");
-            activeDirectoryServer = configFile.Split('\n')[1].Trim().Replace("\r", "").Replace("\n", "");
-            if (configFile.Split('\n').Length > 2)
+            if (connectionData.Equals(""))
             {
-                visualizerUrl = configFile.Split('\n')[2].Trim().Replace("\r", "").Replace("\n", "");
+                MessageBox.Show("Failed to bootstrap configuration!", "MIRACUM Mapper: ERROR");
+                terminate();
+            }
+
+            connectionData = connectionData.Replace("\r", "");
+            jdbcConnectionString = connectionData.Split('\n')[0].Trim().Replace("\r", "").Replace("\n", "");
+            activeDirectoryServer = connectionData.Split('\n')[1].Trim().Replace("\r", "").Replace("\n", "");
+            if (connectionData.Split('\n').Length > 2)
+            {
+                visualizerUrl = connectionData.Split('\n')[2].Trim().Replace("\r", "").Replace("\n", "");
+            }
+
+
+            string[] connectionStringParts = jdbcConnectionString.Split(';');
+            string server = "", database = "";
+
+            for (int a = 0; a < connectionStringParts.Length; a++)
+            {
+                string part = connectionStringParts[a];
+                string[] partParts = connectionStringParts[a].Split('=');
+                string value = "";
+                if (partParts.Length > 1) value = partParts[1];
+
+                if (part.ToLower().Contains("database"))
+                {
+                    database = value;
+                }
+                if (part.ToLower().Contains("server"))
+                {
+                    server = value;
+                }
             }
 
             InitializeComponent();
@@ -243,6 +309,18 @@ namespace UKER_Mapper
                 WorkingStatus.Text = "Not logged in!";
             }
 
+            if (!projectIndentifier.Equals("Default"))
+            {
+                this.Text = this.Text + "  //  Project: " + projectIndentifier;
+                this.Refresh();
+            }
+
+            if (!server.Equals("") && !database.Equals(""))
+            {
+                this.Text = this.Text + "  //  Database: " + database + ", Server: " + server + "";
+                this.Refresh();
+            }
+
             backupCtrlSizes();
             oldSize = base.Size;
             this.Size = new Size(1000, 725);
@@ -260,7 +338,6 @@ namespace UKER_Mapper
             this.Activate();
 
             checkSoftwareVersion();
-            
 
         }
 
@@ -358,7 +435,13 @@ namespace UKER_Mapper
 
                     if (!String.Equals(nextActiveDirectoryServer, activeDirectoryServer) || !String.Equals(nextJdbcConnectionString, jdbcConnectionString) || !String.Equals(nextVisualizerUrl, visualizerUrl))
                     {
-                        File.WriteAllBytes(@"config.dat", Encoding.ASCII.GetBytes(EncDec.Encrypt(nextJdbcConnectionString + "\n" + nextActiveDirectoryServer + "\n" + nextVisualizerUrl, "TrustNo1")));
+
+                        // Store connection data in registry:
+                        RegistryKey newKey = Registry.CurrentUser.CreateSubKey(@"SOFTWARE\Miracum-Mapper");
+                        newKey.SetValue(projectIndentifier, EncDec.Encrypt(nextJdbcConnectionString + "\n" + nextActiveDirectoryServer + "\n" + nextVisualizerUrl, "TrustNo1"));
+                        newKey.Close();
+
+                        //File.WriteAllBytes(@"config.dat", Encoding.ASCII.GetBytes(EncDec.Encrypt(nextJdbcConnectionString + "\n" + nextActiveDirectoryServer + "\n" + nextVisualizerUrl, "TrustNo1")));
                     }
                     if (!String.Equals(nextActiveDirectoryServer, activeDirectoryServer))
                     {
@@ -372,7 +455,7 @@ namespace UKER_Mapper
                     }
                     if (!String.Equals(nextVisualizerUrl, visualizerUrl))
                     {
-                        MessageBox.Show("Visualizer server configuration has been updated. Please restart the program.", "MIRACUM Mapper");
+                        MessageBox.Show("Visualizer server configuration has been updated. Please restart the program. " + nextVisualizerUrl + " " + visualizerUrl, "MIRACUM Mapper");
                         terminate();
                     }
                 }
@@ -390,6 +473,11 @@ namespace UKER_Mapper
             printDebug("calling " + System.Reflection.MethodBase.GetCurrentMethod().Name + "()");
 
             log("Terminating application.");
+
+            if (dbConnection1 != null && dbConnection1.FullState != ConnectionState.Closed) { dbConnection1.Close(); }
+            if (dbConnection2 != null && dbConnection2.FullState != ConnectionState.Closed) { dbConnection2.Close(); }
+            if (dbConnection3 != null && dbConnection3.FullState != ConnectionState.Closed) { dbConnection3.Close(); }
+
             if (System.Windows.Forms.Application.MessageLoop)
             {
                 // WinForms app
