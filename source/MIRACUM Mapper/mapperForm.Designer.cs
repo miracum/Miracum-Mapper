@@ -69,6 +69,10 @@
             this.nextZustLabel = new System.Windows.Forms.Label();
             this.showDeleted = new System.Windows.Forms.CheckBox();
             this.showAllMappings = new System.Windows.Forms.CheckBox();
+            this.searchSource = new System.Windows.Forms.CheckBox();
+            this.searchInfo = new System.Windows.Forms.CheckBox();
+            this.searchTarget = new System.Windows.Forms.CheckBox();
+            this.searchDoku = new System.Windows.Forms.CheckBox();
             this.blockPanel = new UKER_Mapper.TransparentPanel();
             this.SuspendLayout();
             // 
@@ -241,6 +245,7 @@
             // 
             resources.ApplyResources(this.sourceFilter, "sourceFilter");
             this.sourceFilter.Name = "sourceFilter";
+            this.sourceFilter.MouseClick += new System.Windows.Forms.MouseEventHandler(this.sourceFilter_MouseClick);
             this.sourceFilter.TextChanged += new System.EventHandler(this.sourceFilter_TextChanged);
             this.sourceFilter.KeyDown += new System.Windows.Forms.KeyEventHandler(this.sourceFilter_KeyDown);
             // 
@@ -340,6 +345,42 @@
             this.showAllMappings.UseVisualStyleBackColor = true;
             this.showAllMappings.CheckedChanged += new System.EventHandler(this.showAllMappings_CheckedChanged);
             // 
+            // searchSource
+            // 
+            resources.ApplyResources(this.searchSource, "searchSource");
+            this.searchSource.BackColor = System.Drawing.SystemColors.Control;
+            this.searchSource.Checked = true;
+            this.searchSource.CheckState = System.Windows.Forms.CheckState.Checked;
+            this.searchSource.Name = "searchSource";
+            this.searchSource.UseVisualStyleBackColor = false;
+            this.searchSource.CheckedChanged += new System.EventHandler(this.searchSource_CheckedChanged);
+            // 
+            // searchInfo
+            // 
+            resources.ApplyResources(this.searchInfo, "searchInfo");
+            this.searchInfo.BackColor = System.Drawing.SystemColors.Control;
+            this.searchInfo.Checked = true;
+            this.searchInfo.CheckState = System.Windows.Forms.CheckState.Checked;
+            this.searchInfo.Name = "searchInfo";
+            this.searchInfo.UseVisualStyleBackColor = false;
+            this.searchInfo.CheckedChanged += new System.EventHandler(this.searchInfo_CheckedChanged);
+            // 
+            // searchTarget
+            // 
+            resources.ApplyResources(this.searchTarget, "searchTarget");
+            this.searchTarget.BackColor = System.Drawing.SystemColors.Control;
+            this.searchTarget.Name = "searchTarget";
+            this.searchTarget.UseVisualStyleBackColor = false;
+            this.searchTarget.CheckedChanged += new System.EventHandler(this.searchTarget_CheckedChanged);
+            // 
+            // searchDoku
+            // 
+            resources.ApplyResources(this.searchDoku, "searchDoku");
+            this.searchDoku.BackColor = System.Drawing.SystemColors.Control;
+            this.searchDoku.Name = "searchDoku";
+            this.searchDoku.UseVisualStyleBackColor = false;
+            this.searchDoku.CheckedChanged += new System.EventHandler(this.searchDoku_CheckedChanged);
+            // 
             // blockPanel
             // 
             resources.ApplyResources(this.blockPanel, "blockPanel");
@@ -350,8 +391,12 @@
             // 
             resources.ApplyResources(this, "$this");
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.Controls.Add(this.removeMappingBtn);
             this.Controls.Add(this.blockPanel);
+            this.Controls.Add(this.searchDoku);
+            this.Controls.Add(this.searchTarget);
+            this.Controls.Add(this.searchInfo);
+            this.Controls.Add(this.searchSource);
+            this.Controls.Add(this.removeMappingBtn);
             this.Controls.Add(this.documentationText);
             this.Controls.Add(this.visualizeBtn);
             this.Controls.Add(this.label11);
@@ -393,6 +438,7 @@
             this.Controls.Add(this.panel1);
             this.Name = "mapperForm";
             this.FormClosed += new System.Windows.Forms.FormClosedEventHandler(this.mapperForm_FormClosed);
+            this.MouseClick += new System.Windows.Forms.MouseEventHandler(this.mapperForm_MouseClick);
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -440,6 +486,10 @@
         private System.Windows.Forms.Label nextZustLabel;
         private System.Windows.Forms.CheckBox showDeleted;
         private System.Windows.Forms.CheckBox showAllMappings;
+        private System.Windows.Forms.CheckBox searchSource;
+        private System.Windows.Forms.CheckBox searchInfo;
+        private System.Windows.Forms.CheckBox searchTarget;
+        private System.Windows.Forms.CheckBox searchDoku;
         private TransparentPanel blockPanel;
     }
 }

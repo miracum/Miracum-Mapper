@@ -287,7 +287,7 @@ namespace UKER_Mapper
                 label1.Text = "Source Terminology";
                 label2.Text = "Mappings";
                 label5.Text = "Target Terminology";
-                label6.Text = "Target Code:";
+                label6.Text = "Code:";
                 label7.Text = "Second Local Code:";
                 label8.Text = "Condition:";
                 label9.Text = "Documentation:";
@@ -307,21 +307,28 @@ namespace UKER_Mapper
                 logInButton.Text = "Login";
                 loincSearchBtn.Text = "Search";
                 WorkingStatus.Text = "Not logged in!";
+                searchDoku.Text = "Search";
+                searchInfo.Text = "Search";
+                searchSource.Text = "Search";
+                searchTarget.Text = "Search";
             }
 
             if (!projectIndentifier.Equals("Default"))
             {
-                this.Text = this.Text + "  //  Project: " + projectIndentifier;
+                if (CultureInfo.CurrentCulture.Name.Equals("de-DE")) this.Text = this.Text + "  //  Projekt: " + projectIndentifier;
+                if (!CultureInfo.CurrentCulture.Name.Equals("de-DE")) this.Text = this.Text + "  //  Project: " + projectIndentifier;
                 this.Refresh();
             }
 
             if (!server.Equals("") && !database.Equals(""))
             {
-                this.Text = this.Text + "  //  Database: " + database + ", Server: " + server + "";
+                if (CultureInfo.CurrentCulture.Name.Equals("de-DE")) this.Text = this.Text + "  //  Datenbank: " + database + ", Server: " + server + "";
+                if (!CultureInfo.CurrentCulture.Name.Equals("de-DE")) this.Text = this.Text + "  //  Database: " + database + ", Server: " + server + "";
                 this.Refresh();
             }
 
             backupCtrlSizes();
+
             oldSize = base.Size;
             this.Size = new Size(1000, 725);
             this.CenterToScreen();
@@ -337,8 +344,15 @@ namespace UKER_Mapper
             this.WindowState = FormWindowState.Normal;
             this.Activate();
 
+            searchDoku.Visible = false;
+            searchInfo.Visible = false;
+            searchSource.Visible = false;
+            searchTarget.Visible = false;
+            blockPanel.Visible = false;
+            removeMappingBtn.Visible = false;
+            saveMappingBtn.Visible = false;
+            
             checkSoftwareVersion();
-
         }
 
         private void checkSoftwareVersion() // Check if we're compatible with the database
@@ -670,9 +684,6 @@ namespace UKER_Mapper
 
             try
             {
-
-
-
                 List<String> alreadyMapped = new List<String>();
 
                 var cmd = new NpgsqlCommand("SELECT distinct source_code FROM mapping", dbConnection1);
@@ -684,7 +695,7 @@ namespace UKER_Mapper
                 }
                 reader.Close();
 
-                string textFilter = " ";
+                string textFilter = "";
                 if (!sourceFilter.Text.Equals(""))
                 {
                     string[] words = sourceFilter.Text.Split(' ');
@@ -695,7 +706,22 @@ namespace UKER_Mapper
                         {
                             sWord = "%" + sWord + "%";
                         }
-                        textFilter = textFilter + " AND (upper(source_code) SIMILAR TO'" + sWord + "' OR upper(source_desc) SIMILAR TO '" + sWord + "' OR upper(documentation) SIMILAR TO '" + sWord + "' OR upper(target_code) SIMILAR TO '" + sWord + "')";
+
+                        if (searchSource.Checked)
+                            textFilter = textFilter + " upper(source_code) SIMILAR TO'" + sWord + "' ";
+
+                        if (searchInfo.Checked)
+                            textFilter = textFilter + " upper(source_desc) SIMILAR TO '" + sWord + "' ";
+
+                        if (searchDoku.Checked)
+                            textFilter = textFilter + " upper(documentation) SIMILAR TO '" + sWord + "' ";
+
+                        if (searchTarget.Checked)
+                            textFilter = textFilter + " upper(target_code) SIMILAR TO '" + sWord + "' ";
+
+                        if (!textFilter.Equals(""))
+                            textFilter = "AND (" + textFilter.Trim().Replace("  ", " OR ") + ")";
+
                     }
                 }
 
@@ -1001,19 +1027,29 @@ namespace UKER_Mapper
             backupListPositionAndName(sourceTermsList, 0, 0);
             backupListPositionAndName(mappingTermsList, 0, 1);
 
-            if (isDeleted == false)
+            if (removeMappingBtn.Text.Equals("Speichern") || removeMappingBtn.Text.Equals("Save"))
             {
                 if (CultureInfo.CurrentCulture.Name.Equals("de-DE"))
-                    saveMapping(true, true, "Gelöscht", false);
+                    saveMapping(true, true, "Gespeichert", false);
                 if (!CultureInfo.CurrentCulture.Name.Equals("de-DE"))
-                    saveMapping(true, true, "Deleted", false);
+                    saveMapping(true, true, "Saved", false);
             }
             else
             {
-                if (CultureInfo.CurrentCulture.Name.Equals("de-DE"))
-                    saveMapping(true, false, "Wiederhergestellt", false);
-                if (!CultureInfo.CurrentCulture.Name.Equals("de-DE"))
-                    saveMapping(true, false, "Restored", false);
+                if (isDeleted == false)
+                {
+                    if (CultureInfo.CurrentCulture.Name.Equals("de-DE"))
+                        saveMapping(true, true, "Gelöscht", false);
+                    if (!CultureInfo.CurrentCulture.Name.Equals("de-DE"))
+                        saveMapping(true, true, "Deleted", false);
+                }
+                else
+                {
+                    if (CultureInfo.CurrentCulture.Name.Equals("de-DE"))
+                        saveMapping(true, false, "Wiederhergestellt", false);
+                    if (!CultureInfo.CurrentCulture.Name.Equals("de-DE"))
+                        saveMapping(true, false, "Restored", false);
+                }
             }
 
             //loadSourceTerms(); -- Liste NICHT neu laden.
@@ -1399,6 +1435,10 @@ namespace UKER_Mapper
             cleanDocumentation();
             documentationText.Focus();
             documentationText.SelectionStart = documentationText.Text.Length;
+
+            if (removeMappingBtn.Text.Equals("Wiederherstellen")) { removeMappingBtn.Text = "Speichern"; }
+            if (removeMappingBtn.Text.Equals("Restore")) { removeMappingBtn.Text = "Save"; }
+
         }
 
         private void documentation_Leave(object sender, EventArgs e) // User has left the documentation field, clean up the text
@@ -1518,6 +1558,15 @@ namespace UKER_Mapper
 
                     mappingVersion.Text = "" + version;
                     currentLevelIndicator.Text = showAbove.Items[Int32.Parse(mapping_level)].ToString();
+
+                    /*
+                    if (deleted == 1)
+                    {
+                        if (CultureInfo.CurrentCulture.Name.Equals("de-DE")) currentLevelIndicator.Text += " (gelöscht)";
+                        if (!CultureInfo.CurrentCulture.Name.Equals("de-DE")) currentLevelIndicator.Text += " (deleted)";
+                    }
+                    */
+
                     userRejectTo = Int32.Parse(mapping_level);
                     sendToAccept.Items.Clear();
 
@@ -1696,26 +1745,29 @@ namespace UKER_Mapper
         private void sourceFilter_KeyDown(object sender, KeyEventArgs e) // User is entering text into the filter field
         {
             printDebug("calling " + System.Reflection.MethodBase.GetCurrentMethod().Name + "()");
-            disableEventHandlers();
-
             if (e.KeyCode == Keys.Enter)
             {
+                triggerSearch();
+            }
+        }
 
-                mappingTermsList.Items.Clear();
-                targetCode.Text = "";
-                secondarySourceCode.Text = "";
-                secondarySourceCodeCondition.Text = "";
-                documentationText.Text = "";
+        private void triggerSearch()
+        {
+            disableEventHandlers();
+            mappingTermsList.Items.Clear();
+            targetCode.Text = "";
+            secondarySourceCode.Text = "";
+            secondarySourceCodeCondition.Text = "";
+            documentationText.Text = "";
 
-                updateWindowStartingWithSoureTerms();
+            updateWindowStartingWithSoureTerms();
 
-                if (sourceTermsList.Items.Count > 0)
-                {
-                    enableEventHandlers();
-                    //sourceTermsList.SelectedIndex = 0;
-                }
+            if (sourceTermsList.Items.Count > 0)
+            {
+                enableEventHandlers();
             }
             enableEventHandlers();
+
         }
 
         private void previousVersion_Click(object sender, EventArgs e) // User wants to view the previous version of the mapping
@@ -2095,7 +2147,27 @@ namespace UKER_Mapper
 
         private void sourceFilter_TextChanged(object sender, EventArgs e)
         {
+            showOrHideSearchCheckboxes();
+        }
+
+        private void showOrHideSearchCheckboxes()
+        {
             sourceFilter.Text = sanitizeInput(sourceFilter.Text);
+
+            if (!sourceFilter.Text.Equals(""))
+            {
+                searchDoku.Visible = true;
+                searchInfo.Visible = true;
+                searchSource.Visible = true;
+                searchTarget.Visible = true;
+            }
+            else
+            {
+                searchDoku.Visible = false;
+                searchInfo.Visible = false;
+                searchSource.Visible = false;
+                searchTarget.Visible = false;
+            }
         }
 
         private string sanitizeInput(string text)
@@ -2116,6 +2188,52 @@ namespace UKER_Mapper
         private void documentationText_LinkClicked(object sender, LinkClickedEventArgs e)
         {
             System.Diagnostics.Process.Start(e.LinkText);
+        }
+
+        private void searchSource_CheckedChanged(object sender, EventArgs e)
+        {
+            checkSearchFields();
+            triggerSearch();
+        }
+
+        private void checkSearchFields()
+        {
+            // We need at least one checkbox checked:
+            if (!searchDoku.Checked && !searchInfo.Checked && !searchSource.Checked && !searchTarget.Checked)
+            {
+                searchSource.Checked = true;
+            }
+        }
+
+        private void searchInfo_CheckedChanged(object sender, EventArgs e)
+        {
+            checkSearchFields();
+            triggerSearch();
+        }
+
+        private void searchTarget_CheckedChanged(object sender, EventArgs e)
+        {
+            checkSearchFields();
+            triggerSearch();
+        }
+
+        private void searchDoku_CheckedChanged(object sender, EventArgs e)
+        {
+            checkSearchFields();
+            triggerSearch();
+        }
+
+        private void mapperForm_MouseClick(object sender, MouseEventArgs e)
+        {
+            searchDoku.Visible = false;
+            searchInfo.Visible = false;
+            searchSource.Visible = false;
+            searchTarget.Visible = false;
+        }
+
+        private void sourceFilter_MouseClick(object sender, MouseEventArgs e)
+        {
+            showOrHideSearchCheckboxes();
         }
     }
 
