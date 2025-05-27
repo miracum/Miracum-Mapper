@@ -696,11 +696,14 @@ namespace UKER_Mapper
                 reader.Close();
 
                 string textFilter = "";
+                string wordFilter = "";
+
                 if (!sourceFilter.Text.Equals(""))
                 {
                     string[] words = sourceFilter.Text.Split(' ');
                     for (int a = 0; a < words.Length; a++)
                     {
+                        wordFilter = "";
                         String sWord = words[a].ToUpper();
                         if (!sWord.Contains("%"))
                         {
@@ -708,20 +711,21 @@ namespace UKER_Mapper
                         }
 
                         if (searchSource.Checked)
-                            textFilter = textFilter + " upper(source_code) SIMILAR TO'" + sWord + "' ";
-
-                        if (searchInfo.Checked)
-                            textFilter = textFilter + " upper(source_desc) SIMILAR TO '" + sWord + "' ";
-
-                        if (searchDoku.Checked)
-                            textFilter = textFilter + " upper(documentation) SIMILAR TO '" + sWord + "' ";
+                            wordFilter = wordFilter + " upper(source_code) ";
 
                         if (searchTarget.Checked)
-                            textFilter = textFilter + " upper(target_code) SIMILAR TO '" + sWord + "' ";
+                            wordFilter = wordFilter + " upper(target_code) ";
 
-                        if (!textFilter.Equals(""))
-                            textFilter = "AND (" + textFilter.Trim().Replace("  ", " OR ") + ")";
+                        if (searchInfo.Checked)
+                            wordFilter = wordFilter + " upper(source_desc) ";
 
+                        if (searchDoku.Checked)
+                            wordFilter = wordFilter + " upper(documentation) ";
+
+                        if (!wordFilter.Equals(""))
+                            wordFilter = "AND " + wordFilter.Trim().Replace("  ", " || ")  + " SIMILAR TO '" + sWord + "' ";
+                        
+                        textFilter = textFilter + wordFilter;
                     }
                 }
 
