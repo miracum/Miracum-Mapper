@@ -87,7 +87,6 @@ namespace UKER_Mapper
         {
             Console.WriteLine(msg);
         }
-
         private void log(string text) // Write to log in database
         {
             startWorking();
@@ -244,7 +243,6 @@ namespace UKER_Mapper
                 visualizerUrl = connectionData.Split('\n')[2].Trim().Replace("\r", "").Replace("\n", "");
             }
 
-
             string[] connectionStringParts = jdbcConnectionString.Split(';');
             string server = "", database = "";
 
@@ -354,6 +352,7 @@ namespace UKER_Mapper
             saveMappingBtn.Visible = false;
             noMappingBtn.Visible = false;
             aktualisierenBtn.Visible = false;
+            visualizeBtn.Visible = false;
 
             checkSoftwareVersion();
         }
@@ -521,8 +520,6 @@ namespace UKER_Mapper
 
             try
             {
-
-
                 var cmd = new NpgsqlCommand();
                 cmd.CommandText = "SELECT userid, enabled, filterfrom, filterto, allowbrowsehistory, forcedfilter, transitions FROM userids WHERE userid = @user";
                 cmd.Parameters.AddWithValue("user", user);
@@ -563,7 +560,7 @@ namespace UKER_Mapper
 
                 if (visualizerUrl.Contains("http"))
                 {
-                    visualizeBtn.Enabled = true;
+                    visualizeBtn.Visible = true;
                 }
 
                 sourceFilter.Enabled = true;
@@ -588,14 +585,11 @@ namespace UKER_Mapper
                     startWorking();
                     try
                     {
-
-
                         var cmd = new NpgsqlCommand();
                         cmd.CommandText = "INSERT INTO userids (userid) VALUES (@user)";
                         cmd.Parameters.AddWithValue("user", user);
                         cmd.Connection = dbConnection1;
                         cmd.ExecuteNonQuery();
-
                     }
                     catch (Exception msg)
                     {
@@ -630,9 +624,6 @@ namespace UKER_Mapper
                 showBelow.Items.Clear();
                 sendToAccept.Items.Clear();
 
-
-
-
                 // Read Expert Levels from Database
                 int maxLevel = 0;
                 int index = 0;
@@ -654,7 +645,6 @@ namespace UKER_Mapper
                     {
                         showBelow.SelectedIndex = index;
                     }
-
                     index++;
                 }
                 reader.Close();
@@ -701,13 +691,16 @@ namespace UKER_Mapper
 
                 string textFilter = "";
                 string wordFilter = "";
+                string textFilter2 = "";
+                string wordFilter2 = "";
 
-                if (!sourceFilter.Text.Equals(""))
+                if (!sourceFilter.Text.Trim().Equals(""))
                 {
-                    string[] words = sourceFilter.Text.Split(' ');
+                    string[] words = sourceFilter.Text.Trim().Split(' ');
                     for (int a = 0; a < words.Length; a++)
                     {
                         wordFilter = "";
+                        wordFilter2 = "";
                         String sWord = words[a].ToUpper();
                         if (!sWord.Contains("%"))
                         {
@@ -715,27 +708,44 @@ namespace UKER_Mapper
                         }
 
                         if (searchSource.Checked)
+                        {
                             wordFilter = wordFilter + " upper(source_code) ";
+                            wordFilter2 = wordFilter2 + " upper(source_code) ";
+                        }
 
                         if (searchTarget.Checked)
+                        {
                             wordFilter = wordFilter + " upper(target_code) ";
+                        }
 
                         if (searchInfo.Checked)
+                        {
                             wordFilter = wordFilter + " upper(source_desc) ";
+                            wordFilter2 = wordFilter2 + " upper(source_desc) ";
+                        }
 
                         if (searchDoku.Checked)
+                        {
                             wordFilter = wordFilter + " upper(documentation) ";
+                        }
 
                         if (!wordFilter.Equals(""))
+                        {
                             wordFilter = "AND " + wordFilter.Trim().Replace("  ", " || ") + " SIMILAR TO '" + sWord + "' ";
+                        }
+
+                        if (!wordFilter2.Equals(""))
+                        {
+                            wordFilter2 = "AND " + wordFilter2.Trim().Replace("  ", " || ") + " SIMILAR TO '" + sWord + "' ";
+                        }
 
                         textFilter = textFilter + wordFilter;
+                        textFilter2 = textFilter2 + wordFilter2;
                     }
                 }
 
                 string forcedFilter = " ";
                 if (!userForcedFilter.Equals("")) forcedFilter = " AND " + userForcedFilter;
-
 
                 string sql = @"SELECT DISTINCT source_code
 	                        , source_desc
@@ -756,23 +766,26 @@ namespace UKER_Mapper
 						                        , version DESC
 						                        , timestmp DESC
 					                        )
-			                        SELECT lm.source_code
-				                        , lm.target_code
-				                        , lm.max_version
-				                        , lm.timestmp timestmp
-				                        , am.sec_source_code
-				                        , am.sec_source_code_cond
-				                        , am.documentation
-				                        , am.mapping_level
-				                        , am.deleted
-				                        , am.saved_by
-				                        , am.sw_version
-				                        , coalesce(st.source_desc, '') AS source_desc
-			                        FROM latest_mapping_versions lm
-			                        LEFT JOIN mapping am ON lm.source_code = am.source_code
-				                        AND lm.target_code = am.target_code
-				                        AND lm.max_version = am.version
-			                        LEFT JOIN sourceterms st ON lm.source_code = st.source_code
+			                        SELECT * FROM (
+			                            SELECT lm.source_code
+				                            , lm.target_code
+				                            , lm.max_version
+				                            , lm.timestmp timestmp
+				                            , am.sec_source_code
+				                            , am.sec_source_code_cond
+				                            , am.documentation
+				                            , am.mapping_level
+				                            , am.deleted
+				                            , am.saved_by
+				                            , am.sw_version
+				                            , coalesce(st.source_desc, '') AS source_desc
+			                            FROM latest_mapping_versions lm
+			                            LEFT JOIN mapping am ON lm.source_code = am.source_code
+				                            AND lm.target_code = am.target_code
+				                            AND lm.max_version = am.version
+			                            LEFT JOIN sourceterms st ON lm.source_code = st.source_code
+                                    ) SQ
+                                    WHERE 1 = 1 $TEXTFILTER$
 			                        ORDER BY source_code ASC
 			                        )
 		                        , not_deleted_mappings AS (
@@ -786,7 +799,7 @@ namespace UKER_Mapper
 		                        , deleted_mappings AS (
 			                        SELECT mm.source_code
 				                        , mm.source_desc
-				                        , 0 mapping_level 
+				                        , 0 mapping_level
 				                        , mm.timestmp ts
 			                        FROM all_mappings mm
 			                        WHERE mm.deleted = 1
@@ -809,27 +822,46 @@ namespace UKER_Mapper
 					                        SELECT source_code
 					                        FROM deleted_mappings
 					                        )
+                                        $TEXTFILTER2$
 			                        )
-	                        SELECT * FROM not_deleted_mappings
+	                        SELECT *
+	                        FROM not_deleted_mappings
 	                        UNION
-	                        SELECT * FROM deleted_mappings
+	                        SELECT *
+	                        FROM deleted_mappings
 	                        UNION
-	                        SELECT * FROM unmapped_codes
-	                        )";
+	                        SELECT *
+	                        FROM unmapped_codes
+	                        )
+                        WHERE mapping_level >= '$FILTERFROMLEVEL$'
+	                        AND mapping_level <= '$FITLERTOLEVEL$' $FORCEDFILTER$
+                        GROUP BY source_code
+	                        , source_desc
+                        ORDER BY ts DESC
+	                        , source_code ASC";
 
-                sql += " WHERE mapping_level >= '" + filterFromLevel + "'" +
-                       " AND mapping_level <= '" + filterToLevel + "' " +
-                          textFilter + forcedFilter + " " +
-                      " GROUP BY source_code " +
-                      "     , source_desc " +
-                      " ORDER BY ts DESC " +
-                      "     , source_code ASC ";
+                if (searchTarget.Checked || searchDoku.Checked)
+                {
+                    // When searching Target or Doku, disable adding all missing codes to the Source list via subquery "unmapped_codes":
+                    textFilter2 = " AND 1 = 0 ";
+                }
+
+                if (!sourceFilter.Text.Trim().Equals(""))
+                {
+                    // When searching for anything, disable the requirement that a mapping has to be not deleted in subquery "not_deleted_mappings":
+                    sql = sql.Replace("WHERE mm.deleted != 1", "");
+                }
+
+                sql = sql.Replace("$TEXTFILTER$", textFilter);
+                sql = sql.Replace("$TEXTFILTER2$", textFilter2);
+                sql = sql.Replace("$FILTERFROMLEVEL$", filterFromLevel + "");
+                sql = sql.Replace("$FITLERTOLEVEL$", filterToLevel + "");
+                sql = sql.Replace("$FORCEDFILTER$", forcedFilter);
 
                 Console.WriteLine(sql);
 
                 try
                 {
-
                     var cmd2 = new NpgsqlCommand(sql, dbConnection1);
                     var reader2 = cmd2.ExecuteReader();
                     while (reader2.Read())
@@ -884,7 +916,6 @@ namespace UKER_Mapper
                 ;
             }
         }
-
         private void restoreListByName(ListBox listBox, int index) // Restore selection in lists
         {
             printDebug("calling " + System.Reflection.MethodBase.GetCurrentMethod().Name + "()");
@@ -905,7 +936,6 @@ namespace UKER_Mapper
 
             checkDisableNewMapping();
         }
-
         private void restoreListByPos(ListBox listBox, int index) // Restore selection in lists
         {
             printDebug("calling " + System.Reflection.MethodBase.GetCurrentMethod().Name + "()");
@@ -968,7 +998,6 @@ namespace UKER_Mapper
             setUnsavedChanges(2);
             handleTargetCodeUpdateEvent();
             enableEventHandlers();
-
         }
 
         private void loadTransitions(int requestedStartLevel) // Loads the state transitions for a given level
@@ -1170,8 +1199,6 @@ namespace UKER_Mapper
                 //string insertString = "'" + source_code + "', '" + target_code + "', '" + sec_source_code + "', '" + sec_source_code_cond + "', '" + documentation + "', '" + mapping_level + "', " + version + ", " + deleted + "" +
                 //    ", '" + userLoggedIn + "', '" + this.Text + "'";
 
-
-
                 var cmd = new NpgsqlCommand();
                 cmd.CommandText = "INSERT INTO mapping (source_code, target_code, sec_source_code, sec_source_code_cond, documentation, mapping_level, version, deleted, saved_by, sw_version) VALUES (@source_code, @target_code, @sec_source_code, @sec_source_code_cond, @documentation, @mapping_level,@version, @deleted, @userLoggedIn, @thisText)";
                 cmd.Parameters.AddWithValue("source_code", source_code);
@@ -1216,7 +1243,6 @@ namespace UKER_Mapper
 
         private void sourceTerms_SelectedIndexChanged(object sender, EventArgs e) // User has selected another source term on the left column
         {
-
             if (eventHandlersDisabled > 0) return;
             printDebug("calling " + System.Reflection.MethodBase.GetCurrentMethod().Name + "()");
             checkDisableNewMapping();
@@ -1226,7 +1252,6 @@ namespace UKER_Mapper
             resetTerminologyPart(false);
             updateLabVisalizer();
             loadMappings();
-
         }
 
         private void checkDisableNewMapping()
@@ -1243,7 +1268,6 @@ namespace UKER_Mapper
                 targetCode.Enabled = true;
                 loincSearchBtn.Enabled = true;
             }
-
         }
 
         private void updateLabVisalizer() // Update the Miracum LabVisualizer
@@ -1283,7 +1307,6 @@ namespace UKER_Mapper
 
             if (sourceTermsList.SelectedItem != null)
             {
-
                 documentationText.ReadOnly = false;
                 string selectedSourceTerm = sourceTermsList.SelectedItem.ToString();
                 mappingTermsList.Items.Clear();
@@ -1303,9 +1326,7 @@ namespace UKER_Mapper
                     }
                     reader1.Close();
 
-
                     // Add all mappings
-
                     string sql =
                         "select * from(select source_code, target_code, max(version) maxversion from mapping " +
                         "where source_code = '" + selectedSourceTerm + "' group by source_code, target_code) m1 " +
@@ -1361,8 +1382,6 @@ namespace UKER_Mapper
                         }
                     }
                     reader1.Close();
-
-
                 }
                 catch (Exception msg)
                 {
@@ -1393,7 +1412,6 @@ namespace UKER_Mapper
                 mappingTermsList.Items.Clear();
                 resetTerminologyPart(false);
             }
-
             enableEventHandlers();
             backupMappingList();
             stopWorking();
@@ -1449,10 +1467,7 @@ namespace UKER_Mapper
             startWorking();
             try
             {
-
-
-                var
-                    cmd = new NpgsqlCommand(
+                var cmd = new NpgsqlCommand(
                     "SELECT level FROM expertlevel WHERE description = '" +
                     showAbove.SelectedItem.ToString() + "'"
                     , dbConnection1);
@@ -1489,8 +1504,6 @@ namespace UKER_Mapper
             startWorking();
             try
             {
-
-
                 var cmd = new NpgsqlCommand("SELECT level FROM expertlevel WHERE description = '" + showBelow.SelectedItem.ToString() + "'", dbConnection1);
                 var reader = cmd.ExecuteReader();
                 while (reader.Read())
@@ -1498,8 +1511,6 @@ namespace UKER_Mapper
                     filterToLevel = reader.GetInt32(0);
                 }
                 reader.Close();
-
-
             }
             catch (Exception msg)
             {
@@ -1601,8 +1612,6 @@ namespace UKER_Mapper
             try
             {
                 NpgsqlCommand cmd;
-
-
                 String sql = "";
                 if (requestVersion == -1)
                 {
@@ -1731,7 +1740,6 @@ namespace UKER_Mapper
             removeMappingBtn.Visible = false;
         }
 
-
         public static string CreateMD5(string input)
         {
             // Use input string to calculate MD5 hash
@@ -1758,7 +1766,6 @@ namespace UKER_Mapper
             LoginForm lf = new LoginForm();
             string pass = "";
 
-
             if (lf.ShowDialog(this) == DialogResult.OK)
             {
                 userLoggedIn = lf.user.Text;
@@ -1772,8 +1779,6 @@ namespace UKER_Mapper
             if (schemaVersion >= 2)
             {
                 string userid = lf.user.Text;
-
-
                 var cmd = new NpgsqlCommand();
                 cmd.CommandText = "select local_password_md5 from userids where userid = @userid";
                 cmd.Parameters.AddWithValue("userid", userid);
@@ -1785,7 +1790,6 @@ namespace UKER_Mapper
                     log("Found a local user password to be used for authentication.");
                 }
                 reader.Close();
-
             }
 
             if (local_password.Equals(""))
@@ -1859,7 +1863,6 @@ namespace UKER_Mapper
                 enableEventHandlers();
             }
             enableEventHandlers();
-
         }
 
         private void previousVersion_Click(object sender, EventArgs e) // User wants to view the previous version of the mapping

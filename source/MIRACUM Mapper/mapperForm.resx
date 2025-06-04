@@ -1083,9 +1083,6 @@
   <data name="&gt;&gt;previousVersionBtn.ZOrder" xml:space="preserve">
     <value>15</value>
   </data>
-  <data name="visualizeBtn.Enabled" type="System.Boolean, mscorlib">
-    <value>False</value>
-  </data>
   <data name="visualizeBtn.ImeMode" type="System.Windows.Forms.ImeMode, System.Windows.Forms">
     <value>NoControl</value>
   </data>
@@ -1752,7 +1749,7 @@
 </value>
   </data>
   <data name="$this.Text" xml:space="preserve">
-    <value>MIRACUM Mapper (Version 1.13.0, 2025-06-04)</value>
+    <value>MIRACUM Mapper (Version 1.13.1, 2025-06-04)</value>
   </data>
   <data name="&gt;&gt;$this.Name" xml:space="preserve">
     <value>mapperForm</value>
