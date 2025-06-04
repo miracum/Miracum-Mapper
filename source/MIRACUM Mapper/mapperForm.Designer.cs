@@ -73,7 +73,9 @@
             this.searchInfo = new System.Windows.Forms.CheckBox();
             this.searchTarget = new System.Windows.Forms.CheckBox();
             this.searchDoku = new System.Windows.Forms.CheckBox();
+            this.noMappingBtn = new System.Windows.Forms.Button();
             this.blockPanel = new UKER_Mapper.TransparentPanel();
+            this.aktualisierenBtn = new System.Windows.Forms.Button();
             this.SuspendLayout();
             // 
             // sourceTermsList
@@ -81,6 +83,7 @@
             resources.ApplyResources(this.sourceTermsList, "sourceTermsList");
             this.sourceTermsList.Name = "sourceTermsList";
             this.sourceTermsList.SelectedIndexChanged += new System.EventHandler(this.sourceTerms_SelectedIndexChanged);
+            this.sourceTermsList.SelectedValueChanged += new System.EventHandler(this.sourceTermsList_SelectedValueChanged);
             // 
             // mappingTermsList
             // 
@@ -219,7 +222,7 @@
             // 
             // SourceDescr
             // 
-            this.SourceDescr.BackColor = System.Drawing.SystemColors.Control;
+            this.SourceDescr.BackColor = System.Drawing.SystemColors.ControlLight;
             this.SourceDescr.BorderStyle = System.Windows.Forms.BorderStyle.None;
             resources.ApplyResources(this.SourceDescr, "SourceDescr");
             this.SourceDescr.Name = "SourceDescr";
@@ -358,7 +361,7 @@
             // searchInfo
             // 
             resources.ApplyResources(this.searchInfo, "searchInfo");
-            this.searchInfo.BackColor = System.Drawing.SystemColors.Control;
+            this.searchInfo.BackColor = System.Drawing.SystemColors.ControlLight;
             this.searchInfo.Checked = true;
             this.searchInfo.CheckState = System.Windows.Forms.CheckState.Checked;
             this.searchInfo.Name = "searchInfo";
@@ -376,10 +379,17 @@
             // searchDoku
             // 
             resources.ApplyResources(this.searchDoku, "searchDoku");
-            this.searchDoku.BackColor = System.Drawing.SystemColors.Control;
+            this.searchDoku.BackColor = System.Drawing.SystemColors.Window;
             this.searchDoku.Name = "searchDoku";
             this.searchDoku.UseVisualStyleBackColor = false;
             this.searchDoku.CheckedChanged += new System.EventHandler(this.searchDoku_CheckedChanged);
+            // 
+            // noMappingBtn
+            // 
+            resources.ApplyResources(this.noMappingBtn, "noMappingBtn");
+            this.noMappingBtn.Name = "noMappingBtn";
+            this.noMappingBtn.UseVisualStyleBackColor = true;
+            this.noMappingBtn.Click += new System.EventHandler(this.noMappingBtn_Click);
             // 
             // blockPanel
             // 
@@ -387,18 +397,28 @@
             this.blockPanel.Name = "blockPanel";
             this.blockPanel.Click += new System.EventHandler(this.blockPanel_Click_1);
             // 
+            // aktualisierenBtn
+            // 
+            resources.ApplyResources(this.aktualisierenBtn, "aktualisierenBtn");
+            this.aktualisierenBtn.Name = "aktualisierenBtn";
+            this.aktualisierenBtn.UseVisualStyleBackColor = true;
+            this.aktualisierenBtn.Click += new System.EventHandler(this.aktualisierenBtn_Click);
+            // 
             // mapperForm
             // 
             resources.ApplyResources(this, "$this");
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
+            this.Controls.Add(this.aktualisierenBtn);
+            this.Controls.Add(this.noMappingBtn);
+            this.Controls.Add(this.visualizeBtn);
             this.Controls.Add(this.blockPanel);
+            this.Controls.Add(this.sourceTermsList);
+            this.Controls.Add(this.searchInfo);
             this.Controls.Add(this.searchDoku);
             this.Controls.Add(this.searchTarget);
-            this.Controls.Add(this.searchInfo);
             this.Controls.Add(this.searchSource);
             this.Controls.Add(this.removeMappingBtn);
             this.Controls.Add(this.documentationText);
-            this.Controls.Add(this.visualizeBtn);
             this.Controls.Add(this.label11);
             this.Controls.Add(this.mappingVersion);
             this.Controls.Add(this.nextVersionBtn);
@@ -415,7 +435,6 @@
             this.Controls.Add(this.sourceFilter);
             this.Controls.Add(this.logInButton);
             this.Controls.Add(this.TermInfo);
-            this.Controls.Add(this.SourceDescr);
             this.Controls.Add(this.addCommentBtn);
             this.Controls.Add(this.WorkingStatus);
             this.Controls.Add(this.saveMappingBtn);
@@ -434,8 +453,8 @@
             this.Controls.Add(this.showAbove);
             this.Controls.Add(this.label2);
             this.Controls.Add(this.mappingTermsList);
-            this.Controls.Add(this.sourceTermsList);
             this.Controls.Add(this.panel1);
+            this.Controls.Add(this.SourceDescr);
             this.Name = "mapperForm";
             this.FormClosed += new System.Windows.Forms.FormClosedEventHandler(this.mapperForm_FormClosed);
             this.MouseClick += new System.Windows.Forms.MouseEventHandler(this.mapperForm_MouseClick);
@@ -491,6 +510,8 @@
         private System.Windows.Forms.CheckBox searchTarget;
         private System.Windows.Forms.CheckBox searchDoku;
         private TransparentPanel blockPanel;
+        private System.Windows.Forms.Button noMappingBtn;
+        private System.Windows.Forms.Button aktualisierenBtn;
     }
 }
 

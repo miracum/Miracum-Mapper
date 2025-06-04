@@ -1,5 +1,5 @@
 ﻿//    MIRACUM Mapper, a program for mapping local medical codes to a standard teminology.
-//    Copyright (C) 2019-2024 The MIRACUM Project, Universitätsklinikum Erlangen.
+//    Copyright (C) 2019-2025 The MIRACUM Project, Universitätsklinikum Erlangen.
 //    Implemented by: Sebastian Mate (Sebastian.Mate(at)uk-erlangen.de)
 //
 //    This program is free software: you can redistribute it and/or modify
@@ -153,7 +153,6 @@ namespace UKER_Mapper
             cnt.Font = new Font(cnt.Font.FontFamily.Name, orFontSize[i], cnt.Font.Style);
 
         }
-
         private void ResizeAll(Control cnt, Size newSize)
         {
             //printDebug("calling " + System.Reflection.MethodBase.GetCurrentMethod().Name + "()");
@@ -311,19 +310,21 @@ namespace UKER_Mapper
                 searchInfo.Text = "Search";
                 searchSource.Text = "Search";
                 searchTarget.Text = "Search";
+                noMappingBtn.Text = "No Mapping";
+                aktualisierenBtn.Text = "Refresh";
             }
 
             if (!projectIndentifier.Equals("Default"))
             {
-                if (CultureInfo.CurrentCulture.Name.Equals("de-DE")) this.Text = this.Text + "  //  Projekt: " + projectIndentifier;
-                if (!CultureInfo.CurrentCulture.Name.Equals("de-DE")) this.Text = this.Text + "  //  Project: " + projectIndentifier;
+                if (CultureInfo.CurrentCulture.Name.Equals("de-DE")) this.Text = this.Text + "            Projekt: " + projectIndentifier;
+                if (!CultureInfo.CurrentCulture.Name.Equals("de-DE")) this.Text = this.Text + "            Project: " + projectIndentifier;
                 this.Refresh();
             }
 
             if (!server.Equals("") && !database.Equals(""))
             {
-                if (CultureInfo.CurrentCulture.Name.Equals("de-DE")) this.Text = this.Text + "  //  Datenbank: " + database + ", Server: " + server + "";
-                if (!CultureInfo.CurrentCulture.Name.Equals("de-DE")) this.Text = this.Text + "  //  Database: " + database + ", Server: " + server + "";
+                if (CultureInfo.CurrentCulture.Name.Equals("de-DE")) this.Text = this.Text + "            Datenbank: " + database + ", Server: " + server + "";
+                if (!CultureInfo.CurrentCulture.Name.Equals("de-DE")) this.Text = this.Text + "            Database: " + database + ", Server: " + server + "";
                 this.Refresh();
             }
 
@@ -351,7 +352,9 @@ namespace UKER_Mapper
             blockPanel.Visible = false;
             removeMappingBtn.Visible = false;
             saveMappingBtn.Visible = false;
-            
+            noMappingBtn.Visible = false;
+            aktualisierenBtn.Visible = false;
+
             checkSoftwareVersion();
         }
 
@@ -576,6 +579,7 @@ namespace UKER_Mapper
                     previousVersionBtn.Enabled = true;
                     nextVersionBtn.Enabled = true;
                 }
+                checkDisableNewMapping();
             }
             else
             {
@@ -723,8 +727,8 @@ namespace UKER_Mapper
                             wordFilter = wordFilter + " upper(documentation) ";
 
                         if (!wordFilter.Equals(""))
-                            wordFilter = "AND " + wordFilter.Trim().Replace("  ", " || ")  + " SIMILAR TO '" + sWord + "' ";
-                        
+                            wordFilter = "AND " + wordFilter.Trim().Replace("  ", " || ") + " SIMILAR TO '" + sWord + "' ";
+
                         textFilter = textFilter + wordFilter;
                     }
                 }
@@ -732,38 +736,96 @@ namespace UKER_Mapper
                 string forcedFilter = " ";
                 if (!userForcedFilter.Equals("")) forcedFilter = " AND " + userForcedFilter;
 
-                string deletedFilter = " AND deleted = 0 ";
-                if (showDeleted.Checked) deletedFilter = " ";
 
-                string sql =
-                   "     SELECT DISTINCT source_code, source_desc, max(timestamp) ts" +
-                   "     FROM" +
-                   "       (SELECT sourceterms.source_code, " +
-                   "              coalesce(mapping.target_code, '---') AS target_code," +
-                   "               sourceterms.source_desc," +
-                   "               coalesce(mapping.mapping_level, 0) AS mapping_level," +
-                   "               coalesce(mapping.version, 0) AS VERSION," +
-                   "               coalesce(mapping.deleted, 0) AS deleted," +
-                   "               coalesce(mapping.timestamp, TO_TIMESTAMP('2000-01-01 1:00:00','YYYY-MM-DD HH:MI:SS')) AS timestamp," +
-                   "               COALESCE(mapping.documentation, '') AS documentation" +
-                   "        FROM sourceterms" +
-                   "        LEFT JOIN " +
-                   "          (SELECT m.source_code," +
-                   "                  m.target_code," +
-                   "                  m.version," +
-                   "                  m.deleted," +
-                   "                  m.mapping_level," +
-                   "                  m.documentation," +
-                   "                  m.timestamp" +
-                   "           FROM mapping m," +
-                   "             (SELECT source_code, target_code, max(VERSION) AS version FROM mapping GROUP BY source_code, target_code) AS l" +
-                   "           WHERE m.source_code = l.source_code" +
-                   "             AND m.target_code = l.target_code" +
-                   "             AND m.version = l.version) AS mapping ON sourceterms.source_code = mapping.source_code) AS a" +
-                   "     WHERE mapping_level >= '" + filterFromLevel + "'" +
-                   "       AND mapping_level <= '" + filterToLevel + "'" +
-                           deletedFilter + textFilter + forcedFilter + " " +
-                   "     GROUP BY source_code, source_desc ORDER BY ts DESC";
+                string sql = @"SELECT DISTINCT source_code
+	                        , source_desc
+	                        , max(ts) ts
+                        FROM (
+	                        WITH all_mappings AS (
+			                        WITH latest_mapping_versions AS (
+					                        SELECT DISTINCT ON (
+							                        source_code
+							                        , target_code
+							                        ) source_code
+						                        , target_code
+						                        , version max_version
+						                        , TIMESTAMP timestmp
+					                        FROM mapping
+					                        ORDER BY source_code ASC
+						                        , target_code ASC
+						                        , version DESC
+						                        , timestmp DESC
+					                        )
+			                        SELECT lm.source_code
+				                        , lm.target_code
+				                        , lm.max_version
+				                        , lm.timestmp timestmp
+				                        , am.sec_source_code
+				                        , am.sec_source_code_cond
+				                        , am.documentation
+				                        , am.mapping_level
+				                        , am.deleted
+				                        , am.saved_by
+				                        , am.sw_version
+				                        , coalesce(st.source_desc, '') AS source_desc
+			                        FROM latest_mapping_versions lm
+			                        LEFT JOIN mapping am ON lm.source_code = am.source_code
+				                        AND lm.target_code = am.target_code
+				                        AND lm.max_version = am.version
+			                        LEFT JOIN sourceterms st ON lm.source_code = st.source_code
+			                        ORDER BY source_code ASC
+			                        )
+		                        , not_deleted_mappings AS (
+			                        SELECT mm.source_code
+				                        , mm.source_desc
+				                        , mm.mapping_level
+				                        , mm.timestmp ts
+			                        FROM all_mappings mm
+			                        WHERE mm.deleted != 1
+			                        )
+		                        , deleted_mappings AS (
+			                        SELECT mm.source_code
+				                        , mm.source_desc
+				                        , 0 mapping_level 
+				                        , mm.timestmp ts
+			                        FROM all_mappings mm
+			                        WHERE mm.deleted = 1
+				                        AND mm.source_code NOT IN (
+					                        SELECT source_code
+					                        FROM not_deleted_mappings
+					                        )
+			                        )
+		                        , unmapped_codes AS (
+			                        SELECT st.source_code
+				                        , source_desc
+				                        , 0
+				                        , to_timestamp('1900-01-01 1:00:00', 'YYYY-MM-DD HH:MI:SS') AS ts
+			                        FROM sourceterms st
+			                        WHERE st.source_code NOT IN (
+					                        SELECT source_code
+					                        FROM not_deleted_mappings
+					                        )
+				                        AND st.source_code NOT IN (
+					                        SELECT source_code
+					                        FROM deleted_mappings
+					                        )
+			                        )
+	                        SELECT * FROM not_deleted_mappings
+	                        UNION
+	                        SELECT * FROM deleted_mappings
+	                        UNION
+	                        SELECT * FROM unmapped_codes
+	                        )";
+
+                sql += " WHERE mapping_level >= '" + filterFromLevel + "'" +
+                       " AND mapping_level <= '" + filterToLevel + "' " +
+                          textFilter + forcedFilter + " " +
+                      " GROUP BY source_code " +
+                      "     , source_desc " +
+                      " ORDER BY ts DESC " +
+                      "     , source_code ASC ";
+
+                Console.WriteLine(sql);
 
                 try
                 {
@@ -783,7 +845,7 @@ namespace UKER_Mapper
                         }
 
                         item.Text = source_code;
-                        sourceTermsList.Items.Add(item);
+                        if (!sourceTermsList.Items.Contains(item)) sourceTermsList.Items.Add(item);
                     }
                     reader2.Close();
                 }
@@ -791,8 +853,6 @@ namespace UKER_Mapper
                 {
                     MessageBox.Show("Invalid filter expression!", "MIRACUM Mapper: ERROR");
                 }
-
-
             }
             catch (Exception msg)
             {
@@ -842,6 +902,8 @@ namespace UKER_Mapper
                     break;
                 }
             }
+
+            checkDisableNewMapping();
         }
 
         private void restoreListByPos(ListBox listBox, int index) // Restore selection in lists
@@ -889,7 +951,7 @@ namespace UKER_Mapper
             mappingTermsList.Items.Add(item);
             mappingTermsList.SelectedIndex = mappingTermsList.Items.Count - 1;
 
-            targetCode.Text = "Kein Mapping";
+            targetCode.Text = "Neues Mapping";
             secondarySourceCode.Text = "";
             secondarySourceCodeCondition.Text = "";
             documentationText.Text = "";
@@ -897,18 +959,16 @@ namespace UKER_Mapper
             mappingVersion.Text = "0";
             loadTransitions(-1);
 
-            if (sourceTermsList.SelectedItem != null && mappingTermsList.SelectedItem != null)
-            {
-                loadTerminologyPart(sourceTermsList.SelectedItem.ToString(), mappingTermsList.SelectedItem.ToString(), -1, true);
-                loadTargetCodeDescription();
-            }
+            // Do not show the buttons because we don't want to save "Neues Mapping" directly:
+            removeMappingBtn.Visible = false;
+            saveMappingBtn.Visible = false;
 
             enableInputFields();
-            showSave();
-            showDelete();
             targetCode.Focus();
             setUnsavedChanges(2);
+            handleTargetCodeUpdateEvent();
             enableEventHandlers();
+
         }
 
         private void loadTransitions(int requestedStartLevel) // Loads the state transitions for a given level
@@ -1015,7 +1075,7 @@ namespace UKER_Mapper
                 saveMapping(false, false, sendToAccept.Text, true);
             }
 
-            loadSourceTerms();
+            //loadSourceTerms();
             restoreListByName(sourceTermsList, 0);
             loadMappings();
             restoreListByName(mappingTermsList, 1); // Ohne Effekt
@@ -1058,6 +1118,7 @@ namespace UKER_Mapper
 
             //loadSourceTerms(); -- Liste NICHT neu laden.
             //restoreListByName(sourceTermsList, 0); -- Liste NICHT neu laden.
+            aktualisierenBtn.Visible = true;
             loadMappings();
             restoreListByName(mappingTermsList, 1);
             enableEventHandlers();
@@ -1148,20 +1209,41 @@ namespace UKER_Mapper
             //}
             //loadMappings();
             //restoreListByName(mappingTermsList, 1);
+            aktualisierenBtn.Visible = true;
             updateLabVisalizer();
             stopWorking();
         }
 
         private void sourceTerms_SelectedIndexChanged(object sender, EventArgs e) // User has selected another source term on the left column
         {
+
             if (eventHandlersDisabled > 0) return;
             printDebug("calling " + System.Reflection.MethodBase.GetCurrentMethod().Name + "()");
+            checkDisableNewMapping();
             disableInputFields();
             hideSaveDeleteButtons();
             addCommentBtn.Enabled = false;
             resetTerminologyPart(false);
             updateLabVisalizer();
             loadMappings();
+
+        }
+
+        private void checkDisableNewMapping()
+        {
+            if (sourceTermsList.SelectedIndex == -1)
+            {
+                addNewMappingBtn.Enabled = false;
+                targetCode.Enabled = false;
+                loincSearchBtn.Enabled = false;
+            }
+            else
+            {
+                addNewMappingBtn.Enabled = true;
+                targetCode.Enabled = true;
+                loincSearchBtn.Enabled = true;
+            }
+
         }
 
         private void updateLabVisalizer() // Update the Miracum LabVisualizer
@@ -1329,7 +1411,6 @@ namespace UKER_Mapper
 
         private void updateWindowStartingWithSoureTerms() // Load all lists, starting from the source terms list on the left
         {
-            //if (!loadingInProgress) {
             disableEventHandlers();
             backupListPositionAndName(sourceTermsList, 0, 0);
             backupListPositionAndName(mappingTermsList, 0, 1);
@@ -1338,7 +1419,18 @@ namespace UKER_Mapper
             loadMappings();
             restoreListByName(mappingTermsList, 1);
             enableEventHandlers();
-            //}
+            aktualisierenBtn.Visible = false;
+        }
+
+        private void updateWindowStartingWithMappings() // Load all lists, starting from the source terms list on the left
+        {
+            disableEventHandlers();
+            backupListPositionAndName(sourceTermsList, 0, 0);
+            backupListPositionAndName(mappingTermsList, 0, 1);
+            restoreListByName(sourceTermsList, 0);
+            loadMappings();
+            restoreListByName(mappingTermsList, 1);
+            enableEventHandlers();
         }
 
         private void showAbove_SelectedValueChanged(object sender, EventArgs e) // User has selected another filter option
@@ -1496,6 +1588,16 @@ namespace UKER_Mapper
                 disableInputFields();
             }
 
+            if (targetCode.Text != null && !targetCode.Text.Trim().Equals("Neues Mapping"))
+            {
+                saveMappingBtn.Visible = true;
+                sendToAccept.Visible = true;
+                nextZustLabel.Visible = true;
+                noMappingBtn.Visible = false;
+            }
+
+            removeMappingBtn.Visible = false; // Assume there is nothing to be restored/deleted until we really get something from the DB
+
             try
             {
                 NpgsqlCommand cmd;
@@ -1563,34 +1665,32 @@ namespace UKER_Mapper
                     mappingVersion.Text = "" + version;
                     currentLevelIndicator.Text = showAbove.Items[Int32.Parse(mapping_level)].ToString();
 
-                    /*
-                    if (deleted == 1)
-                    {
-                        if (CultureInfo.CurrentCulture.Name.Equals("de-DE")) currentLevelIndicator.Text += " (gelöscht)";
-                        if (!CultureInfo.CurrentCulture.Name.Equals("de-DE")) currentLevelIndicator.Text += " (deleted)";
-                    }
-                    */
-
                     userRejectTo = Int32.Parse(mapping_level);
-                    sendToAccept.Items.Clear();
 
-                    if (requestVersion == -1 && deleted == 0) showSave();
+                    sendToAccept.Items.Clear();
+                    loadTransitions(Int32.Parse(mapping_level));
+
+                    if (requestVersion == -1 && deleted == 0)
+                    {
+                        saveMappingBtn.Visible = true;
+                        sendToAccept.Visible = true;
+                        nextZustLabel.Visible = true;
+                    }
                     if (deleted == 1)
                     {
                         removeMappingBtn.Text = "Wiederherstellen";
                         if (!CultureInfo.CurrentCulture.Name.Equals("de-DE")) removeMappingBtn.Text = "Restore";
                         isDeleted = true;
+                        saveMappingBtn.Visible = false;
                     }
                     else
                     {
                         removeMappingBtn.Text = "Löschen";
                         if (!CultureInfo.CurrentCulture.Name.Equals("de-DE")) removeMappingBtn.Text = "Delete";
                         isDeleted = false;
+                        saveMappingBtn.Visible = true;
                     }
-
-                    showDelete();
-
-                    loadTransitions(Int32.Parse(mapping_level));
+                    removeMappingBtn.Visible = true;
                 }
                 reader.Close();
 
@@ -1621,18 +1721,6 @@ namespace UKER_Mapper
             //printDebug("calling " + System.Reflection.MethodBase.GetCurrentMethod().Name + "()");
             eventHandlersDisabled++;
             printDebug("eventHandlersDisabled=" + eventHandlersDisabled);
-        }
-
-        private void showSave() // Show the "save" button
-        {
-            saveMappingBtn.Visible = true;
-            sendToAccept.Visible = true;
-            nextZustLabel.Visible = true;
-        }
-
-        private void showDelete() // Show the "delete" button
-        {
-            removeMappingBtn.Visible = true;
         }
 
         private void hideSaveDeleteButtons() // Hide the "save" and "delete" buttons
@@ -1790,7 +1878,7 @@ namespace UKER_Mapper
         {
             printDebug("calling " + System.Reflection.MethodBase.GetCurrentMethod().Name + "()");
             wb.Show();
-            if (sourceTermsList.SelectedItem != null) wb.showUrl("http://svm-ap-dizlnc1p.srv.uk-erlangen.de:3838/?" + sourceTermsList.SelectedItem.ToString());
+            if (sourceTermsList.SelectedItem != null) wb.showUrl(visualizerUrl + sourceTermsList.SelectedItem.ToString());
         }
 
         private void mapperForm_FormClosed(object sender, FormClosedEventArgs e) // User has closed the main window
@@ -1819,6 +1907,18 @@ namespace UKER_Mapper
                     {
                         TermInfo.Text = "The code should not be mapped.";
                     }
+                }
+                else if (targetCode.Text.Equals("Neues Mapping"))
+                {
+                    if (CultureInfo.CurrentCulture.Name.Equals("de-DE"))
+                    {
+                        TermInfo.Text = "Bitte den Code oben eingeben, oder:";
+                    }
+                    else
+                    {
+                        TermInfo.Text = "Please enter the code above, or:";
+                    }
+                    noMappingBtn.Visible = true;
                 }
                 else
                 {
@@ -1886,12 +1986,12 @@ namespace UKER_Mapper
 
         private void showDeleted_CheckedChanged(object sender, EventArgs e) // User wants to view deleted mappings
         {
-            updateWindowStartingWithSoureTerms();
+            updateWindowStartingWithMappings();
         }
 
         private void showAllMappings_CheckedChanged(object sender, EventArgs e) // User wants to view all mappings
         {
-            updateWindowStartingWithSoureTerms();
+            updateWindowStartingWithMappings();
         }
 
         private void setUnsavedChanges(int status) // User has changed something, warn about unsaved changes
@@ -1918,7 +2018,6 @@ namespace UKER_Mapper
                 {
                     blockPanel.Visible = false;
                 }
-
                 previousVersionBtn.Enabled = false;
                 nextVersionBtn.Enabled = false;
             }
@@ -1964,6 +2063,7 @@ namespace UKER_Mapper
 
                 if (dialogResult == DialogResult.Yes)
                 {
+                    noMappingBtn.Visible = false;
                     setUnsavedChanges(0);
                     blockPanel.Visible = false;
                     resetTerminologyPart(false);
@@ -2005,6 +2105,11 @@ namespace UKER_Mapper
         private void targetCode_KeyUp_1(object sender, KeyEventArgs e) // User has entered something into the target code field
         {
             printDebug("calling " + System.Reflection.MethodBase.GetCurrentMethod().Name + "()");
+            handleTargetCodeUpdateEvent();
+        }
+
+        private void handleTargetCodeUpdateEvent()
+        {
             this.mappingTermsList.SelectedIndexChanged -= new System.EventHandler(this.mappingTermsList_SelectedIndexChanged);
 
             if (!lastTargetCode.Equals(targetCode.Text))
@@ -2058,9 +2163,6 @@ namespace UKER_Mapper
                     mappingTermsList.SelectedIndex = mappingTermsList.Items.Count - 1;
                 }
                 editedMapping = targetCode.Text;
-                showSave();
-                showDelete();
-
             }
             else
             {
@@ -2164,6 +2266,10 @@ namespace UKER_Mapper
                 searchInfo.Visible = true;
                 searchSource.Visible = true;
                 searchTarget.Visible = true;
+                label1.TextAlign = ContentAlignment.MiddleLeft;
+                label2.TextAlign = ContentAlignment.MiddleLeft;
+                if (documentationText.Enabled) searchDoku.BackColor = SystemColors.Window;
+                if (!documentationText.Enabled) searchDoku.BackColor = SystemColors.Control;
             }
             else
             {
@@ -2171,6 +2277,8 @@ namespace UKER_Mapper
                 searchInfo.Visible = false;
                 searchSource.Visible = false;
                 searchTarget.Visible = false;
+                label1.TextAlign = ContentAlignment.MiddleCenter;
+                label2.TextAlign = ContentAlignment.MiddleCenter;
             }
         }
 
@@ -2233,11 +2341,33 @@ namespace UKER_Mapper
             searchInfo.Visible = false;
             searchSource.Visible = false;
             searchTarget.Visible = false;
+            label1.TextAlign = ContentAlignment.MiddleCenter;
+            label2.TextAlign = ContentAlignment.MiddleCenter;
+            if (documentationText.Enabled) searchDoku.BackColor = SystemColors.Window;
+            if (!documentationText.Enabled) searchDoku.BackColor = SystemColors.Control;
         }
 
         private void sourceFilter_MouseClick(object sender, MouseEventArgs e)
         {
             showOrHideSearchCheckboxes();
+        }
+
+        private void sourceTermsList_SelectedValueChanged(object sender, EventArgs e)
+        {
+            checkDisableNewMapping();
+        }
+
+        private void noMappingBtn_Click(object sender, EventArgs e)
+        {
+            targetCode.Text = "Kein Mapping";
+            noMappingBtn.Visible = false;
+            handleTargetCodeUpdateEvent();
+        }
+
+        private void aktualisierenBtn_Click(object sender, EventArgs e)
+        {
+            loadSourceTerms();
+            aktualisierenBtn.Visible = false;
         }
     }
 
