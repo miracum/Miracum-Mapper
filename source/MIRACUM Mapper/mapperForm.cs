@@ -174,54 +174,39 @@ namespace UKER_Mapper
 
             printDebug("calling " + System.Reflection.MethodBase.GetCurrentMethod().Name + "()");
 
-
+            // Get project name from the Project.dat file:
             if (File.Exists(@"Project.dat"))
             {
                 projectIndentifier = File.ReadAllText(@"Project.dat", Encoding.ASCII);
             }
 
-            String connectionData = "", encrypted = "";
-            // Try to get the connection data from the Windows registry:
+            // Setup Windows registy:
             RegistryKey registryKey = Registry.CurrentUser.OpenSubKey(@"SOFTWARE\Miracum-Mapper");
 
-            if (registryKey != null && registryKey.GetValue(projectIndentifier) != null) // It's already in the Windows registry, so load it from there.
-            {
-                encrypted = (string)registryKey.GetValue(projectIndentifier);
-                connectionData = EncDec.Decrypt(encrypted, "TrustNo1");
-            }
+            String connectionDataFile = null, connectionDataRegistry = null;
+            Nullable<DateTime> registryLastUpdated = DateTime.MinValue, configDatLastUpdated = DateTime.MinValue;
 
             // Read and check if the configuration file needs to be encrypted:
+            String encryptedFileData = null;
             try
             {
-
                 if (File.Exists(@"Config.dat"))
                 {
+                    // Get the time the Config.dat file was updated last:
+                    configDatLastUpdated = File.GetLastWriteTime(@"Config.dat");
+                    connectionDataFile = File.ReadAllText(@"Config.dat", Encoding.ASCII);
 
-                    String fileContents = File.ReadAllText(@"Config.dat", Encoding.ASCII);
-                    String encryptedFile;
-
-                    if (fileContents.Contains("Server")) // It's not encrypted, so encrypt and store it away.
+                    if (connectionDataFile.Contains("Server")) // It's not encrypted, so encrypt it.
                     {
-                        encryptedFile = EncDec.Encrypt(fileContents, "TrustNo1");
-                        File.WriteAllText(@"config.dat", encryptedFile);
+                        encryptedFileData = EncDec.Encrypt(connectionDataFile, "TrustNo1");
+                        File.WriteAllText(@"config.dat", encryptedFileData);
                     }
                     else  // It's encrypted, so decrypt it
                     {
-                        encryptedFile = fileContents;
-                        fileContents = EncDec.Decrypt(fileContents, "TrustNo1");
-                    }
-
-                    if (registryKey == null || registryKey.GetValue(projectIndentifier) == null) // It's not stored in the Windows registry yet
-                    {
-                        connectionData = fileContents;
-
-                        // Store connection data in registry:
-                        RegistryKey newKey = Registry.CurrentUser.CreateSubKey(@"SOFTWARE\Miracum-Mapper");
-                        newKey.SetValue(projectIndentifier, encryptedFile);
-                        newKey.Close();
+                        encryptedFileData = connectionDataFile;
+                        connectionDataFile = EncDec.Decrypt(connectionDataFile, "TrustNo1");
                     }
                 }
-
             }
             catch (Exception e)
             {
@@ -229,9 +214,45 @@ namespace UKER_Mapper
                 terminate();
             }
 
-            if (connectionData.Equals(""))
+            // Try to get the connection data from the Windows registry:
+
+            if (registryKey != null && registryKey.GetValue(projectIndentifier) != null && registryKey.GetValue(projectIndentifier + "-Updated") != null) // It's already in the Windows registry
             {
-                MessageBox.Show("Failed to bootstrap configuration!", "MIRACUM Mapper: ERROR");
+                String encrypted = (string)registryKey.GetValue(projectIndentifier);
+                connectionDataRegistry = EncDec.Decrypt(encrypted, "TrustNo1");
+                // Get the time the connection data for this project was updated last:
+                registryLastUpdated = DateTime.Parse(registryKey.GetValue(projectIndentifier + "-Updated").ToString());
+            }
+
+            // If required, update the Windows registry from Config.da:
+
+            if ((registryKey == null || registryKey.GetValue(projectIndentifier) == null || registryKey.GetValue(projectIndentifier + "-Updated") == null ||
+                configDatLastUpdated > registryLastUpdated) && connectionDataFile != null)
+            {
+                // Store connection data from Config.dat in Windows registry:
+                RegistryKey newKey = Registry.CurrentUser.CreateSubKey(@"SOFTWARE\Miracum-Mapper");
+                newKey.SetValue(projectIndentifier, encryptedFileData);
+                newKey.SetValue(projectIndentifier + "-Updated", configDatLastUpdated);
+                newKey.Close();
+                connectionDataRegistry = connectionDataFile;
+            }
+
+            String connectionData = null;
+
+            if (configDatLastUpdated >= registryLastUpdated)
+            {
+                connectionData = connectionDataFile;
+                printDebug("Using Config.dat file for program configuration, because " + configDatLastUpdated + " (file) >= " + registryLastUpdated + "(registry)");
+            }
+            else
+            {
+                connectionData = connectionDataRegistry;
+                printDebug("Using Windows registry for program configuration, because " + configDatLastUpdated + " (file) < " + registryLastUpdated + "(registry)");
+            }
+
+            if (connectionData == null)
+            {
+                MessageBox.Show("Failed to get project configuration!", "MIRACUM Mapper: ERROR");
                 terminate();
             }
 
@@ -449,12 +470,15 @@ namespace UKER_Mapper
                     reader.Close();
 
 
-                    if (!String.Equals(nextActiveDirectoryServer, activeDirectoryServer) || !String.Equals(nextJdbcConnectionString, jdbcConnectionString) || !String.Equals(nextVisualizerUrl, visualizerUrl))
+                    if (!String.Equals(nextActiveDirectoryServer, activeDirectoryServer) ||
+                        !String.Equals(nextJdbcConnectionString, jdbcConnectionString) ||
+                        !String.Equals(nextVisualizerUrl, visualizerUrl))
                     {
 
-                        // Store connection data in registry:
+                        // Update connection data in registry:
                         RegistryKey newKey = Registry.CurrentUser.CreateSubKey(@"SOFTWARE\Miracum-Mapper");
                         newKey.SetValue(projectIndentifier, EncDec.Encrypt(nextJdbcConnectionString + "\n" + nextActiveDirectoryServer + "\n" + nextVisualizerUrl, "TrustNo1"));
+                        newKey.SetValue(projectIndentifier + "-Updated", DateTime.Now);
                         newKey.Close();
 
                         //File.WriteAllBytes(@"config.dat", Encoding.ASCII.GetBytes(EncDec.Encrypt(nextJdbcConnectionString + "\n" + nextActiveDirectoryServer + "\n" + nextVisualizerUrl, "TrustNo1")));
@@ -471,7 +495,7 @@ namespace UKER_Mapper
                     }
                     if (!String.Equals(nextVisualizerUrl, visualizerUrl))
                     {
-                        MessageBox.Show("Visualizer server configuration has been updated. Please restart the program. " + nextVisualizerUrl + " " + visualizerUrl, "MIRACUM Mapper");
+                        MessageBox.Show("Visualizer server configuration has been updated. Please restart the program.", "MIRACUM Mapper");
                         terminate();
                     }
                 }

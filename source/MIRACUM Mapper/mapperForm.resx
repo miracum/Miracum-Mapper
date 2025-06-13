@@ -1749,7 +1749,7 @@
 </value>
   </data>
   <data name="$this.Text" xml:space="preserve">
-    <value>MIRACUM Mapper (Version 1.13.1, 2025-06-04)</value>
+    <value>MIRACUM Mapper (Version 1.13.2, 2025-06-13)</value>
   </data>
   <data name="&gt;&gt;$this.Name" xml:space="preserve">
     <value>mapperForm</value>
