@@ -1440,27 +1440,6 @@
   <data name="&gt;&gt;noMappingBtn.ZOrder" xml:space="preserve">
     <value>1</value>
   </data>
-  <data name="blockPanel.Location" type="System.Drawing.Point, System.Drawing">
-    <value>5, 9</value>
-  </data>
-  <data name="blockPanel.Size" type="System.Drawing.Size, System.Drawing">
-    <value>397, 548</value>
-  </data>
-  <data name="blockPanel.TabIndex" type="System.Int32, mscorlib">
-    <value>55</value>
-  </data>
-  <data name="&gt;&gt;blockPanel.Name" xml:space="preserve">
-    <value>blockPanel</value>
-  </data>
-  <data name="&gt;&gt;blockPanel.Type" xml:space="preserve">
-    <value>UKER_Mapper.TransparentPanel, MIRACUM Mapper, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null</value>
-  </data>
-  <data name="&gt;&gt;blockPanel.Parent" xml:space="preserve">
-    <value>$this</value>
-  </data>
-  <data name="&gt;&gt;blockPanel.ZOrder" xml:space="preserve">
-    <value>3</value>
-  </data>
   <data name="aktualisierenBtn.ImeMode" type="System.Windows.Forms.ImeMode, System.Windows.Forms">
     <value>NoControl</value>
   </data>
@@ -1487,6 +1466,27 @@
   </data>
   <data name="&gt;&gt;aktualisierenBtn.ZOrder" xml:space="preserve">
     <value>0</value>
+  </data>
+  <data name="blockPanel.Location" type="System.Drawing.Point, System.Drawing">
+    <value>5, 9</value>
+  </data>
+  <data name="blockPanel.Size" type="System.Drawing.Size, System.Drawing">
+    <value>397, 548</value>
+  </data>
+  <data name="blockPanel.TabIndex" type="System.Int32, mscorlib">
+    <value>55</value>
+  </data>
+  <data name="&gt;&gt;blockPanel.Name" xml:space="preserve">
+    <value>blockPanel</value>
+  </data>
+  <data name="&gt;&gt;blockPanel.Type" xml:space="preserve">
+    <value>UKER_Mapper.TransparentPanel, MIRACUM Mapper, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null</value>
+  </data>
+  <data name="&gt;&gt;blockPanel.Parent" xml:space="preserve">
+    <value>$this</value>
+  </data>
+  <data name="&gt;&gt;blockPanel.ZOrder" xml:space="preserve">
+    <value>3</value>
   </data>
   <metadata name="$this.Localizable" type="System.Boolean, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089">
     <value>True</value>
@@ -1747,6 +1747,9 @@
         AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
         AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==
 </value>
+  </data>
+  <data name="$this.ImeMode" type="System.Windows.Forms.ImeMode, System.Windows.Forms">
+    <value>NoControl</value>
   </data>
   <data name="$this.Text" xml:space="preserve">
     <value>MIRACUM Mapper (Version 1.13.2, 2025-06-13)</value>

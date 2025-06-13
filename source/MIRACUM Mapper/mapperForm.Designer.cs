@@ -74,8 +74,8 @@
             this.searchTarget = new System.Windows.Forms.CheckBox();
             this.searchDoku = new System.Windows.Forms.CheckBox();
             this.noMappingBtn = new System.Windows.Forms.Button();
-            this.blockPanel = new UKER_Mapper.TransparentPanel();
             this.aktualisierenBtn = new System.Windows.Forms.Button();
+            this.blockPanel = new UKER_Mapper.TransparentPanel();
             this.SuspendLayout();
             // 
             // sourceTermsList
@@ -391,18 +391,18 @@
             this.noMappingBtn.UseVisualStyleBackColor = true;
             this.noMappingBtn.Click += new System.EventHandler(this.noMappingBtn_Click);
             // 
-            // blockPanel
-            // 
-            resources.ApplyResources(this.blockPanel, "blockPanel");
-            this.blockPanel.Name = "blockPanel";
-            this.blockPanel.Click += new System.EventHandler(this.blockPanel_Click_1);
-            // 
             // aktualisierenBtn
             // 
             resources.ApplyResources(this.aktualisierenBtn, "aktualisierenBtn");
             this.aktualisierenBtn.Name = "aktualisierenBtn";
             this.aktualisierenBtn.UseVisualStyleBackColor = true;
             this.aktualisierenBtn.Click += new System.EventHandler(this.aktualisierenBtn_Click);
+            // 
+            // blockPanel
+            // 
+            resources.ApplyResources(this.blockPanel, "blockPanel");
+            this.blockPanel.Name = "blockPanel";
+            this.blockPanel.Click += new System.EventHandler(this.blockPanel_Click_1);
             // 
             // mapperForm
             // 

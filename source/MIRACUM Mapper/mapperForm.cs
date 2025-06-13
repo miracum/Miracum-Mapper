@@ -715,16 +715,13 @@ namespace UKER_Mapper
 
                 string textFilter = "";
                 string wordFilter = "";
-                string textFilter2 = "";
-                string wordFilter2 = "";
-
+                
                 if (!sourceFilter.Text.Trim().Equals(""))
                 {
                     string[] words = sourceFilter.Text.Trim().Split(' ');
                     for (int a = 0; a < words.Length; a++)
                     {
                         wordFilter = "";
-                        wordFilter2 = "";
                         String sWord = words[a].ToUpper();
                         if (!sWord.Contains("%"))
                         {
@@ -734,7 +731,6 @@ namespace UKER_Mapper
                         if (searchSource.Checked)
                         {
                             wordFilter = wordFilter + " upper(source_code) ";
-                            wordFilter2 = wordFilter2 + " upper(source_code) ";
                         }
 
                         if (searchTarget.Checked)
@@ -745,7 +741,6 @@ namespace UKER_Mapper
                         if (searchInfo.Checked)
                         {
                             wordFilter = wordFilter + " upper(source_desc) ";
-                            wordFilter2 = wordFilter2 + " upper(source_desc) ";
                         }
 
                         if (searchDoku.Checked)
@@ -755,133 +750,51 @@ namespace UKER_Mapper
 
                         if (!wordFilter.Equals(""))
                         {
-                            wordFilter = "AND " + wordFilter.Trim().Replace("  ", " || ") + " SIMILAR TO '" + sWord + "' ";
-                        }
-
-                        if (!wordFilter2.Equals(""))
-                        {
-                            wordFilter2 = "AND " + wordFilter2.Trim().Replace("  ", " || ") + " SIMILAR TO '" + sWord + "' ";
+                            wordFilter = "and " + wordFilter.Trim().Replace("  ", " || ") + " similar to '" + sWord + "' ";
                         }
 
                         textFilter = textFilter + wordFilter;
-                        textFilter2 = textFilter2 + wordFilter2;
                     }
                 }
 
                 string forcedFilter = " ";
                 if (!userForcedFilter.Equals("")) forcedFilter = " AND " + userForcedFilter;
 
-                string sql = @"SELECT DISTINCT source_code
-	                        , source_desc
-	                        , max(ts) ts
-                        FROM (
-	                        WITH all_mappings AS (
-			                        WITH latest_mapping_versions AS (
-					                        SELECT DISTINCT ON (
-							                        source_code
-							                        , target_code
-							                        ) source_code
-						                        , target_code
-						                        , version max_version
-						                        , TIMESTAMP timestmp
-					                        FROM mapping
-					                        ORDER BY source_code ASC
-						                        , target_code ASC
-						                        , version DESC
-						                        , timestmp DESC
-					                        )
-			                        SELECT * FROM (
-			                            SELECT lm.source_code
-				                            , lm.target_code
-				                            , lm.max_version
-				                            , lm.timestmp timestmp
-				                            , am.sec_source_code
-				                            , am.sec_source_code_cond
-				                            , am.documentation
-				                            , am.mapping_level
-				                            , am.deleted
-				                            , am.saved_by
-				                            , am.sw_version
-				                            , coalesce(st.source_desc, '') AS source_desc
-			                            FROM latest_mapping_versions lm
-			                            LEFT JOIN mapping am ON lm.source_code = am.source_code
-				                            AND lm.target_code = am.target_code
-				                            AND lm.max_version = am.version
-			                            LEFT JOIN sourceterms st ON lm.source_code = st.source_code
-                                    ) SQ
-                                    WHERE 1 = 1 $TEXTFILTER$
-			                        ORDER BY source_code ASC
-			                        )
-		                        , not_deleted_mappings AS (
-			                        SELECT mm.source_code
-				                        , mm.source_desc
-				                        , mm.mapping_level
-				                        , mm.timestmp ts
-			                        FROM all_mappings mm
-			                        WHERE mm.deleted != 1
-			                        )
-		                        , deleted_mappings AS (
-			                        SELECT mm.source_code
-				                        , mm.source_desc
-				                        , 0 mapping_level
-				                        , mm.timestmp ts
-			                        FROM all_mappings mm
-			                        WHERE mm.deleted = 1
-				                        AND mm.source_code NOT IN (
-					                        SELECT source_code
-					                        FROM not_deleted_mappings
-					                        )
-			                        )
-		                        , unmapped_codes AS (
-			                        SELECT st.source_code
-				                        , source_desc
-				                        , 0
-				                        , to_timestamp('1900-01-01 1:00:00', 'YYYY-MM-DD HH:MI:SS') AS ts
-			                        FROM sourceterms st
-			                        WHERE st.source_code NOT IN (
-					                        SELECT source_code
-					                        FROM not_deleted_mappings
-					                        )
-				                        AND st.source_code NOT IN (
-					                        SELECT source_code
-					                        FROM deleted_mappings
-					                        )
-                                        $TEXTFILTER2$
-			                        )
-	                        SELECT *
-	                        FROM not_deleted_mappings
-	                        UNION
-	                        SELECT *
-	                        FROM deleted_mappings
-	                        UNION
-	                        SELECT *
-	                        FROM unmapped_codes
-	                        )
-                        WHERE mapping_level >= '$FILTERFROMLEVEL$'
-	                        AND mapping_level <= '$FITLERTOLEVEL$' $FORCEDFILTER$
-                        GROUP BY source_code
-	                        , source_desc
-                        ORDER BY ts DESC
-	                        , source_code ASC";
+                string sql = @"	with mapper_mappings as (
+		                            with latest_mapping_versions as (
+                                      select distinct on (source_code, target_code) source_code, target_code, version max_version, timestamp timestmp from mapping
+                                      order by source_code asc, target_code asc, version desc, timestmp desc
+		                            )
+		                            select lm.source_code, s.source_desc, lm.target_code, t.description target_desc, lm.max_version, lm.timestmp timestmp,
+		                                   am.sec_source_code, am.sec_source_code_cond, am.documentation, am.mapping_level, am.deleted, am.saved_by, am.sw_version
+		                            from latest_mapping_versions lm
+		                            left join mapping am on lm.source_code = am.source_code and
+		                                                    lm.target_code = am.target_code and
+		                                                    lm.max_version = am.version
+		                            left join sourceterms s on lm.source_code = s.source_code
+		                            left join terminfo t on lm.target_code = t.code
+		                            order by source_code asc
+	                            ), unmapped_codes as (
+	                                select source_code, source_desc, null target_code, null target_desc, 0 max_version, to_timestamp('1900-01-01 1:00:00', 'YYYY-MM-DD HH:MI:SS') timestmp,
+                                           null sec_source_code, null sec_source_code_cond, null documentation, 0 mapping_level, 0 deleted, null saved_by, null sw_version
+			                        from sourceterms where source_code not in (select source_code from mapping)
+	                            ), combined as (
+                                    select * from mapper_mappings where deleted != 1
+                                    union
+		                            select * from unmapped_codes
+	                            ) select source_code, source_desc, max(timestmp) ts from combined
+	                              where mapping_level >= $FILTERFROMLEVEL$ and mapping_level <= $FITLERTOLEVEL$ $FORCEDFILTER$ $TEXTFILTER$
+	                              group by source_code, source_desc order by ts desc, source_code asc";
 
-                if (searchTarget.Checked || searchDoku.Checked)
+                if (showDeleted.Checked)
                 {
-                    // When searching Target or Doku, disable adding all missing codes to the Source list via subquery "unmapped_codes":
-                    textFilter2 = " AND 1 = 0 ";
-                }
-
-                if (!sourceFilter.Text.Trim().Equals(""))
-                {
-                    // When searching for anything, disable the requirement that a mapping has to be not deleted in subquery "not_deleted_mappings":
-                    sql = sql.Replace("WHERE mm.deleted != 1", "");
+                    sql = sql.Replace("where deleted != 1", "");
                 }
 
                 sql = sql.Replace("$TEXTFILTER$", textFilter);
-                sql = sql.Replace("$TEXTFILTER2$", textFilter2);
                 sql = sql.Replace("$FILTERFROMLEVEL$", filterFromLevel + "");
                 sql = sql.Replace("$FITLERTOLEVEL$", filterToLevel + "");
                 sql = sql.Replace("$FORCEDFILTER$", forcedFilter);
-
                 Console.WriteLine(sql);
 
                 try
@@ -2013,7 +1926,7 @@ namespace UKER_Mapper
 
         private void showDeleted_CheckedChanged(object sender, EventArgs e) // User wants to view deleted mappings
         {
-            updateWindowStartingWithMappings();
+            updateWindowStartingWithSoureTerms();
         }
 
         private void showAllMappings_CheckedChanged(object sender, EventArgs e) // User wants to view all mappings
