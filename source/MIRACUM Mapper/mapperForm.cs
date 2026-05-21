@@ -715,7 +715,7 @@ namespace UKER_Mapper
 
                 string textFilter = "";
                 string wordFilter = "";
-                
+
                 if (!sourceFilter.Text.Trim().Equals(""))
                 {
                     string[] words = sourceFilter.Text.Trim().Split(' ');
@@ -1024,7 +1024,7 @@ namespace UKER_Mapper
 
         private void saveMappingBtn_Click(object sender, EventArgs e) // User presses the green button on the lower right (= save)
         {
-            backupListPositionAndName(sourceTermsList, 1, 0);
+            backupListPositionAndName(sourceTermsList, 0 /*1*/, 0); // Do not jump to next position
             backupListPositionAndName(mappingTermsList, 0, 1);
 
             printDebug("calling " + System.Reflection.MethodBase.GetCurrentMethod().Name + "()");
@@ -1266,7 +1266,7 @@ namespace UKER_Mapper
                     // Add all mappings
                     string sql =
                         "select * from(select source_code, target_code, max(version) maxversion from mapping " +
-                        "where source_code = '" + selectedSourceTerm + "' group by source_code, target_code) m1 " +
+                        "where source_code = @selectedSourceTerm group by source_code, target_code) m1 " +
                         "join(select source_code, target_code, version, mapping_level from mapping) m2 " +
                         "on m1.source_code = m2.source_code and m1.target_code = m2.target_code and m1.maxversion = m2.version ";
 
@@ -1275,6 +1275,7 @@ namespace UKER_Mapper
                     printDebug(sql);
 
                     cmd1 = new NpgsqlCommand(sql, dbConnection1);
+                    cmd1.Parameters.AddWithValue("selectedSourceTerm", selectedSourceTerm);
                     reader1 = cmd1.ExecuteReader();
 
                     if (reader1.HasRows)
@@ -1283,20 +1284,26 @@ namespace UKER_Mapper
                         {
                             string source_code = reader1["source_code"].ToString();
                             string target_code = reader1["target_code"].ToString();
-                            string maxversion = reader1["maxversion"].ToString();
+                            int maxversion = (Int32) reader1["maxversion"];
 
                             // Test if it's deleted. If not, add it to the list.
 
                             if (showDeleted.Checked)
                             {
-                                sql = "select source_code, target_code, version, deleted from mapping where source_code = '" + source_code + "' and target_code ='" + target_code + "' and version = '" + maxversion + "'";
+                                sql = "select source_code, target_code, version, deleted from mapping where source_code = @source_code and target_code = @target_code and version = @maxversion";
                             }
                             else
                             {
-                                sql = "select source_code, target_code, version, deleted from mapping where source_code = '" + source_code + "' and target_code ='" + target_code + "' and version = '" + maxversion + "' and deleted = 0";
+                                sql = "select source_code, target_code, version, deleted from mapping where source_code = @source_code and target_code = @target_code and version = @maxversion and deleted = 0";
                             }
 
                             NpgsqlCommand cmd2 = new NpgsqlCommand(sql, dbConnection2);
+
+                            cmd2.Parameters.AddWithValue("source_code", source_code);
+                            cmd2.Parameters.AddWithValue("target_code", target_code);
+                            cmd2.Parameters.AddWithValue("maxversion", maxversion);
+                            cmd2.Connection = dbConnection2;
+
                             NpgsqlDataReader reader2 = cmd2.ExecuteReader();
                             if (reader2.HasRows)
                             {
@@ -1319,6 +1326,7 @@ namespace UKER_Mapper
                         }
                     }
                     reader1.Close();
+
                 }
                 catch (Exception msg)
                 {
@@ -1555,13 +1563,13 @@ namespace UKER_Mapper
                     sql = "select version, source_code, target_code, sec_source_code, sec_source_code_cond, documentation, mapping_level, deleted "
                          + "  from ("
                          + "      SELECT max(version) as version, source_code, target_code, sec_source_code, sec_source_code_cond, documentation, mapping_level, deleted "
-                         + "      FROM mapping where source_code = '" + sCode + "' AND target_code = '" + tCode + "'"
+                         + "      FROM mapping where source_code = @sCode AND target_code = @tCode"
                          + "      GROUP by source_code, target_code, sec_source_code, sec_source_code_cond, documentation, mapping_level, deleted"
                          + "  ) as A"
                          + "  where version in ("
                          + "      SELECT max(version) "
                          + "      FROM mapping "
-                         + "      where source_code = '" + sCode + "' AND target_code = '" + tCode + "')";
+                         + "      where source_code = @sCode AND target_code = @tCode)";
                     cmd = new NpgsqlCommand(sql, dbConnection1);
                 }
                 else
@@ -1569,12 +1577,16 @@ namespace UKER_Mapper
                     sql = "select version, source_code, target_code, sec_source_code, sec_source_code_cond, documentation, mapping_level, deleted "
                          + "  from ("
                          + "      SELECT version, source_code, target_code, sec_source_code, sec_source_code_cond, documentation, mapping_level, deleted "
-                         + "      FROM mapping where source_code = '" + sCode + "' AND target_code = '" + tCode + "'"
+                         + "      FROM mapping where source_code = @sCode AND target_code = @tCode"
                          + "  ) as A"
-                         + "  where version = '" + requestVersion + "'";
+                         + "  where version = @requestVersion";
 
                     cmd = new NpgsqlCommand(sql, dbConnection1);
                 }
+
+                cmd.Parameters.AddWithValue("sCode", sCode);
+                cmd.Parameters.AddWithValue("tCode", tCode);
+                cmd.Parameters.AddWithValue("requestVersion", requestVersion);
 
                 NpgsqlDataReader reader = cmd.ExecuteReader();
                 if (reader.HasRows)
@@ -2165,7 +2177,7 @@ namespace UKER_Mapper
 
         private void targetCode_TextChanged(object sender, EventArgs e) // User has modified the target code field, notify about unsaved changes
         {
-            targetCode.Text = sanitizeInput(targetCode.Text);
+            //targetCode.Text = sanitizeInput(targetCode.Text);
             if (eventHandlersDisabled > 0) return;
             setUnsavedChanges(1);
         }
@@ -2179,14 +2191,14 @@ namespace UKER_Mapper
 
         private void secondarySourceCode_TextChanged(object sender, EventArgs e) // User has modified the secondary code field, notify about unsaved changes
         {
-            secondarySourceCode.Text = sanitizeInput(secondarySourceCode.Text);
+            //secondarySourceCode.Text = sanitizeInput(secondarySourceCode.Text);
             if (eventHandlersDisabled > 0) return;
             setUnsavedChanges(1);
         }
 
         private void secondarySourceCodeCondition_TextChanged(object sender, EventArgs e) // User has modified the condition field, notify about unsaved changes
         {
-            secondarySourceCodeCondition.Text = sanitizeInput(secondarySourceCodeCondition.Text);
+            //secondarySourceCodeCondition.Text = sanitizeInput(secondarySourceCodeCondition.Text);
             if (eventHandlersDisabled > 0) return;
             setUnsavedChanges(1);
         }
@@ -2309,6 +2321,7 @@ namespace UKER_Mapper
             loadSourceTerms();
             aktualisierenBtn.Visible = false;
         }
+
     }
 
     public class ListboxItem
